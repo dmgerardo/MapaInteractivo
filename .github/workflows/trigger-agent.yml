@@ -1,0 +1,25 @@
+name: Disparar un agente manualmente (fuera de su horario)
+on:
+  workflow_dispatch:
+    inputs:
+      job_name:
+        description: 'Nombre del job de Cloud Scheduler (firebase-schedule-<funcion>-<region>)'
+        required: true
+        default: 'firebase-schedule-actualizarEventosGeologicos-us-central1'
+      location:
+        description: 'Región del job'
+        required: true
+        default: 'us-central1'
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GLOBO_01 }}'
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Correr el job de Cloud Scheduler
+        run: |
+          gcloud scheduler jobs run "${{ inputs.job_name }}" \
+            --location "${{ inputs.location }}" \
+            --project globo-01
