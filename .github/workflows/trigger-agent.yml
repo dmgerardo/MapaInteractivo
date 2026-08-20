@@ -18,6 +18,8 @@ jobs:
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GLOBO_01 }}'
       - uses: google-github-actions/setup-gcloud@v2
+      - name: TEMPORAL — listar jobs para depurar
+        run: gcloud scheduler jobs list --project globo-01 --location "${{ inputs.location }}"
       - name: Correr el job de Cloud Scheduler
         run: |
           gcloud scheduler jobs run "${{ inputs.job_name }}" \
