@@ -250,10 +250,13 @@ para el siguiente agente:
 **Primer agente — `eventosGeologicos`** (`functions/index.js`,
 `actualizarEventosGeologicos`): sismos del feed FDSN del USGS (gratis, sin API key,
 coordenadas exactas), filtrados por `config.diasHaciaAtras` y
-`config.magnitudMinima` (default 7 días / M4.5). Por cada sismo intenta encontrar
-una noticia relacionada vía Google News RSS (`buscarNoticia()`, best-effort); si no
-encuentra nada, usa la página del evento en USGS como `fuenteUrl` — un evento
-**nunca** se queda sin fuente. Corre una vez al día.
+`config.magnitudMinima` (default 7 días / M5.5). Por cada sismo intenta encontrar
+una noticia relacionada vía Google News RSS (`buscarNoticia()`, best-effort, con una
+pausa de 300ms entre lotes de 10 para no saturar el servicio); si no encuentra nada,
+usa la página del evento en USGS como `fuenteUrl` — un evento **nunca** se queda sin
+fuente. En cada corrida también **borra** los eventos que ya salieron de la ventana
+de días o dejaron de cumplir la magnitud mínima (si no, se quedarían pintados en el
+mapa para siempre). Corre una vez al día.
 
 ⚠️ **Cloud Functions programadas requieren plan Blaze** (pago por uso) en el
 proyecto de Firebase, aunque el uso real quede dentro de la capa gratuita — Spark

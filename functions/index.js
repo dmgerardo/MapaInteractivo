@@ -43,6 +43,18 @@ async function actualizarEventosGeologicos() {
 
   logger.info(`USGS devolvió ${datos.features.length} sismos (>= M${config.magnitudMinima}, últimos ${config.diasHaciaAtras} días)`);
 
+  const idsVigentes = new Set(datos.features.map((f) => f.id));
+  const existentesSnap = await db.ref(`eventos/${CAPA_ID}`).get();
+  const idsHuerfanos = Object.keys(existentesSnap.val() || {}).filter((id) => !idsVigentes.has(id));
+  if (idsHuerfanos.length > 0) {
+    // Sismos que salieron de la ventana de días o ya no cumplen la magnitud mínima
+    // configurada — si no se borran, se quedan pintados en el mapa para siempre.
+    const bajas = {};
+    for (const id of idsHuerfanos) bajas[`eventos/${CAPA_ID}/${id}`] = null;
+    await db.ref().update(bajas);
+    logger.info(`Eliminados ${idsHuerfanos.length} eventos que salieron de la ventana/umbral configurado`);
+  }
+
   // Procesar en lotes concurrentes (no uno por uno): con cientos de sismos, buscar la
   // noticia de cada uno en serie excede el timeout de la function antes de terminar.
   // Se escribe lote por lote para no perder lo ya resuelto si el proceso se corta.
