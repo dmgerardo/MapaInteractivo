@@ -43,26 +43,35 @@ async function actualizarEventosGeologicos() {
 
   logger.info(`USGS devolvió ${datos.features.length} sismos (>= M${config.magnitudMinima}, últimos ${config.diasHaciaAtras} días)`);
 
-  const actualizaciones = {};
-  for (const feature of datos.features) {
-    const [lon, lat] = feature.geometry.coordinates;
-    const { mag, place, time, url: paginaUsgs, title } = feature.properties;
-    const fuenteUrl = (await buscarNoticia(place)) || paginaUsgs;
+  // Procesar en lotes concurrentes (no uno por uno): con cientos de sismos, buscar la
+  // noticia de cada uno en serie excede el timeout de la function antes de terminar.
+  // Se escribe lote por lote para no perder lo ya resuelto si el proceso se corta.
+  const TAMANO_LOTE = 10;
+  let totalEscritos = 0;
+  for (let i = 0; i < datos.features.length; i += TAMANO_LOTE) {
+    const lote = datos.features.slice(i, i + TAMANO_LOTE);
+    const actualizaciones = {};
+    await Promise.all(lote.map(async (feature) => {
+      const [lon, lat] = feature.geometry.coordinates;
+      const { mag, place, time, url: paginaUsgs, title } = feature.properties;
+      const fuenteUrl = (await buscarNoticia(place)) || paginaUsgs;
 
-    actualizaciones[`eventos/${CAPA_ID}/${feature.id}`] = {
-      lat,
-      lon,
-      titulo: title || `M ${mag} - ${place}`,
-      descripcion: `Magnitud ${mag} · ${place}`,
-      categoria: 'sismo',
-      fechaUTC: new Date(time).toISOString(),
-      fuenteUrl,
-      creadoUTC: new Date().toISOString(),
-    };
+      actualizaciones[`eventos/${CAPA_ID}/${feature.id}`] = {
+        lat,
+        lon,
+        titulo: title || `M ${mag} - ${place}`,
+        descripcion: `Magnitud ${mag} · ${place}`,
+        categoria: 'sismo',
+        fechaUTC: new Date(time).toISOString(),
+        fuenteUrl,
+        creadoUTC: new Date().toISOString(),
+      };
+    }));
+    await db.ref().update(actualizaciones);
+    totalEscritos += Object.keys(actualizaciones).length;
   }
 
-  await db.ref().update(actualizaciones);
-  logger.info(`Escritos ${Object.keys(actualizaciones).length} eventos en /eventos/${CAPA_ID}`);
+  logger.info(`Escritos ${totalEscritos} eventos en /eventos/${CAPA_ID}`);
 }
 
 // Búsqueda best-effort de una noticia relacionada al lugar del sismo (Google News RSS,
@@ -84,6 +93,6 @@ async function buscarNoticia(lugar) {
 }
 
 exports.actualizarEventosGeologicos = onSchedule(
-  { schedule: 'every 24 hours', timeZone: 'America/Mexico_City' },
+  { schedule: 'every 24 hours', timeZone: 'America/Mexico_City', timeoutSeconds: 300 },
   actualizarEventosGeologicos,
 );
