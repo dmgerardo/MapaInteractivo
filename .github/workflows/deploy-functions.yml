@@ -1,0 +1,25 @@
+name: Deploy de Cloud Functions (agentes) a Firebase
+on:
+  push:
+    branches: [main]
+    paths: ['functions/**']
+  workflow_dispatch: {}
+jobs:
+  deploy_functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Instalar dependencias de functions
+        working-directory: functions
+        run: npm install
+      - name: Deploy a Firebase Functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GLOBO_01 }}'
+        run: |
+          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/gcp-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+          npx firebase-tools deploy --only functions --project globo-01 --non-interactive
+          rm -f /tmp/gcp-key.json

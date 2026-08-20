@@ -37,9 +37,18 @@
    fase.
 3. **Fase 3**: revisar `storage.rules` si se agrega Firebase Storage (fotos/adjuntos
    por evento) — mismo criterio de raíz bloqueada por default.
-4. **Fase 4**: cuando exista el primer agente real escribiendo por Admin SDK,
-   documentar aquí dónde vive su cuenta de servicio (nunca en este repo) y qué
-   proceso/infraestructura la ejecuta.
+4. ✅ **Fase 4 — hecha (2026-08-20)**: primer agente real (`eventosGeologicos`,
+   `functions/index.js`) corre como **Firebase Cloud Function programada** (2nd
+   gen, `onSchedule`, una vez al día) dentro del mismo proyecto `globo-01`. Su
+   cuenta de servicio es la **identidad por defecto de Cloud Functions** del
+   proyecto (no una clave descargada ni versionada) — Firebase la provee
+   automáticamente al desplegar, con permisos ya acotados al propio proyecto.
+   El deploy de `functions/` desde CI usa el mismo secreto
+   `FIREBASE_SERVICE_ACCOUNT_GLOBO_01` que ya existía para Hosting (workflow
+   `.github/workflows/deploy-functions.yml`) — esa cuenta de servicio solo
+   despliega código, no es la identidad que corre la función.
+   Fuentes de datos externas usadas por este agente (USGS, Google News RSS) son
+   de solo lectura pública, sin API key ni credencial que proteger.
 
 ## Severidad si se saltara este plan
 

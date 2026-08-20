@@ -226,6 +226,39 @@ los permisos quedan simples.
   entrada explícita en `database.rules.json` antes de usarse (ver Sección 4 y
   `SEGURIDAD.md`).
 
+## 8.1 Cómo agregar un agente nuevo
+
+Cada agente es una **Firebase Cloud Function programada** (2nd gen, `onSchedule`)
+que vive en `functions/index.js`, exportada con su propio nombre. Patrón a seguir
+para el siguiente agente:
+
+1. Elegir un `CAPA_ID` único (mismo criterio que la clave del nodo en `/capas`).
+2. Leer su configuración desde `/config/{capaId}` vía Admin SDK, con un default
+   razonable si el nodo aún no existe (y escribirlo la primera vez) — así queda
+   ajustable sin redeploy, con **cambios directo en Firebase Console → Realtime
+   Database** (ese nodo no es visible desde la app web: la raíz lo bloquea por
+   default, ver Sección 8).
+3. Hacer upsert de la metadata en `/capas/{capaId}` (nombre, color, activa).
+4. Escribir cada evento en `/eventos/{capaId}/{eventoId}` — usar un id estable
+   de la fuente original (no `push()`) para que correr el agente de nuevo
+   **actualice**, no duplique.
+5. Exportar la función con `onSchedule({ schedule: '...', timeZone: '...' }, fn)`.
+6. Agregar el deploy en `.github/workflows/deploy-functions.yml` (ya cubre todo
+   `functions/**`, no requiere cambios si solo se agrega una función al mismo
+   archivo).
+
+**Primer agente — `eventosGeologicos`** (`functions/index.js`,
+`actualizarEventosGeologicos`): sismos del feed FDSN del USGS (gratis, sin API key,
+coordenadas exactas), filtrados por `config.diasHaciaAtras` y
+`config.magnitudMinima` (default 7 días / M4.5). Por cada sismo intenta encontrar
+una noticia relacionada vía Google News RSS (`buscarNoticia()`, best-effort); si no
+encuentra nada, usa la página del evento en USGS como `fuenteUrl` — un evento
+**nunca** se queda sin fuente. Corre una vez al día.
+
+⚠️ **Cloud Functions programadas requieren plan Blaze** (pago por uso) en el
+proyecto de Firebase, aunque el uso real quede dentro de la capa gratuita — Spark
+(el plan default) no permite Cloud Scheduler. Sin esto, el deploy falla.
+
 ## 9. Documentación viva
 
 - **`AGENTS.md`** (con `CLAUDE.md` apuntando a él en una línea) es la fuente de

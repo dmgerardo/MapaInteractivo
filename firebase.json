@@ -8,7 +8,11 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "*.md"
+      "*.md",
+      "functions/**"
     ]
+  },
+  "functions": {
+    "source": "functions"
   }
 }
