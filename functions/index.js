@@ -98,6 +98,7 @@ async function buscarNoticia(lugar) {
   try {
     const consulta = encodeURIComponent(`sismo ${lugar}`);
     const respuesta = await fetch(`https://news.google.com/rss/search?q=${consulta}&hl=es-419&gl=MX&ceid=MX:es-419`);
+    logger.info(`TEMPORAL buscarNoticia("${lugar}") -> HTTP ${respuesta.status}`);
     if (!respuesta.ok) return null;
     const xml = await respuesta.text();
     // No basta con tomar el segundo <link> del XML completo: <channel><image> también
