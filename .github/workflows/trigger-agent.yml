@@ -23,9 +23,13 @@ jobs:
           gcloud scheduler jobs run "${{ inputs.job_name }}" \
             --location "${{ inputs.location }}" \
             --project globo-01
-      - name: TEMPORAL — logs de la function
+      - name: TEMPORAL — estado del job y logs
         run: |
-          sleep 20
+          sleep 30
+          gcloud scheduler jobs describe "${{ inputs.job_name }}" \
+            --location "${{ inputs.location }}" \
+            --project globo-01
+          echo "---- LOGS ----"
           gcloud functions logs read "actualizarEventosGeologicos" \
             --region "${{ inputs.location }}" \
             --project globo-01 \
