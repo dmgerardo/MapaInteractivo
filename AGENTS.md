@@ -186,7 +186,47 @@ así, en orden:
    contra Firebase real, solo contra el mock") — nunca reportar éxito sin haber
    corrido la app de verdad.
 
-## 8. Documentación viva
+## 8. Modelo de datos (Realtime Database)
+
+Decidido 2026-08-20: **una capa = un agente de IA**. Cada agente tiene su propio
+nodo de capa; no comparten nodos entre sí, así se evitan colisiones de escritura y
+los permisos quedan simples.
+
+```
+/capas/{capaId}
+  nombre:      string   — nombre visible de la capa/agente
+  descripcion: string
+  color:       string   — color hex para pintar los puntos de esta capa en el globo
+  activa:      boolean  — si se muestra por default al cargar el mapa
+  creadaUTC:   string   — ISO 8601
+
+/eventos/{capaId}/{eventoId}
+  lat:         number
+  lon:         number
+  titulo:      string
+  descripcion: string
+  categoria:   string
+  fechaUTC:    string   — ISO 8601, cuándo ocurrió el evento (no cuándo se registró)
+  fuenteUrl:   string   — opcional, enlace a la fuente que usó el agente
+  creadoUTC:   string   — ISO 8601, cuándo el agente lo escribió
+```
+
+- **Los agentes de IA escriben con el SDK Admin de Firebase (backend), nunca desde
+  el cliente web.** Por eso `database.rules.json` tiene `capas`/`eventos` en
+  `.write: false` — el Admin SDK usa una cuenta de servicio y **ignora las reglas
+  de la base de datos por diseño**, así que ese `false` no bloquea a los agentes,
+  solo bloquea escrituras accidentales o maliciosas desde el navegador.
+- El cliente web (este repo) es **solo lectura** de `capas`/`eventos` — se suscribe
+  vía `suscribir()` (`js/db.js`) y nunca llama `agregar()`/`actualizar()`/
+  `eliminar()` sobre estos nodos. Esas funciones de escritura existen en `db.js`
+  para el día que la UI necesite captura manual (fuera del alcance del MVP), no
+  para el flujo de los agentes.
+- Todo lo que no sea `capas`/`eventos` sigue bloqueado por la regla raíz
+  (`.read: false` / `.write: false`) — cualquier nodo nuevo necesita su propia
+  entrada explícita en `database.rules.json` antes de usarse (ver Sección 4 y
+  `SEGURIDAD.md`).
+
+## 9. Documentación viva
 
 - **`AGENTS.md`** (con `CLAUDE.md` apuntando a él en una línea) es la fuente de
   verdad de arquitectura, modelo de datos, convenciones y decisiones tomadas — se
