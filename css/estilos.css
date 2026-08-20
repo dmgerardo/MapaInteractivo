@@ -49,6 +49,27 @@ html, body {
   display: none;
 }
 
+#panel-info h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+}
+
+#panel-info p {
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+
+#panel-info .meta {
+  color: #9db4c9;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+#panel-info a {
+  color: #4fc3f7;
+}
+
 .toast {
   position: fixed;
   bottom: 1.5rem;
