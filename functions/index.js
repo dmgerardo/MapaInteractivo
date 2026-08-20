@@ -83,9 +83,12 @@ async function buscarNoticia(lugar) {
     const respuesta = await fetch(`https://news.google.com/rss/search?q=${consulta}&hl=es-419&gl=MX&ceid=MX:es-419`);
     if (!respuesta.ok) return null;
     const xml = await respuesta.text();
-    // El primer <link> del feed es el del canal; el segundo es el del primer artículo.
-    const enlaces = [...xml.matchAll(/<link>([^<]*)<\/link>/g)].map((m) => m[1]);
-    return enlaces[1] || null;
+    // No basta con tomar el segundo <link> del XML completo: <channel><image> también
+    // trae uno antes del primer <item>. Hay que acotar la búsqueda al primer <item>.
+    const primerItem = xml.match(/<item>([\s\S]*?)<\/item>/);
+    if (!primerItem) return null;
+    const link = primerItem[1].match(/<link>([^<]*)<\/link>/);
+    return link ? link[1] : null;
   } catch (error) {
     logger.warn(`Búsqueda de noticia falló para "${lugar}": ${error.message}`);
     return null;
