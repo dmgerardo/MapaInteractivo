@@ -1,0 +1,1 @@
+Ver [AGENTS.md](AGENTS.md) para arquitectura, convenciones y flujo de trabajo.
