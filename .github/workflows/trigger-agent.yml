@@ -18,14 +18,13 @@ jobs:
         with:
           credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GLOBO_01 }}'
       - uses: google-github-actions/setup-gcloud@v2
-      - name: TEMPORAL — actualizar config.magnitudMinima existente a 5.5
-        run: |
-          TOKEN=$(gcloud auth print-access-token)
-          curl -s -X PATCH "https://globo-01-default-rtdb.firebaseio.com/config/eventosGeologicos.json" \
-            -H "Authorization: Bearer $TOKEN" \
-            -d '{"magnitudMinima": 5.5}'
       - name: Correr el job de Cloud Scheduler
         run: |
           gcloud scheduler jobs run "${{ inputs.job_name }}" \
             --location "${{ inputs.location }}" \
             --project globo-01
+      - name: TEMPORAL — logs
+        run: |
+          sleep 25
+          gcloud functions logs read "actualizarEventosGeologicos" \
+            --region "${{ inputs.location }}" --project globo-01 --gen2 --limit 100
