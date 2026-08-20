@@ -9,7 +9,7 @@ const { logger } = require('firebase-functions');
 initializeApp();
 
 const CAPA_ID = 'eventosGeologicos';
-const CONFIG_DEFAULT = { diasHaciaAtras: 7, magnitudMinima: 4.5 };
+const CONFIG_DEFAULT = { diasHaciaAtras: 7, magnitudMinima: 5.5 };
 
 async function actualizarEventosGeologicos() {
   const db = getDatabase();
@@ -69,9 +69,14 @@ async function actualizarEventosGeologicos() {
     }));
     await db.ref().update(actualizaciones);
     totalEscritos += Object.keys(actualizaciones).length;
+    if (i + TAMANO_LOTE < datos.features.length) await esperar(300); // no saturar Google News
   }
 
   logger.info(`Escritos ${totalEscritos} eventos en /eventos/${CAPA_ID}`);
+}
+
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Búsqueda best-effort de una noticia relacionada al lugar del sismo (Google News RSS,
