@@ -1,0 +1,16 @@
+name: Deploy a Firebase Hosting al hacer push a main
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GLOBO_01 }}'
+          channelId: live
+          projectId: globo-01
