@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mapa Interactivo</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7" />
+  <link rel="stylesheet" href="css/estilos.css?v=8" />
 </head>
 <body>
   <header id="encabezado">
-    <h1>🌍 Mapa Interactivo</h1>
+    <h1>
+      🌍 Mapa Interactivo
+      <button id="boton-version" type="button" title="Recargar la página"></button>
+    </h1>
     <a id="enlace-mantenimiento" href="mantenimiento.html" aria-label="Mantenimiento" title="Mantenimiento"></a>
   </header>
 
@@ -28,6 +31,6 @@
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
 
   <!-- main.js importa db.js (que a su vez importa firebase-config.js), utilidades.js e iconos.js -->
-  <script type="module" src="js/main.js?v=7"></script>
+  <script type="module" src="js/main.js?v=8"></script>
 </body>
 </html>

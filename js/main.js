@@ -3,6 +3,7 @@
 import { suscribir } from './db.js?v=5';
 import { esc, urlSegura } from './utilidades.js?v=4';
 import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=4';
+import { APP_VERSION } from './version.js?v=1';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -11,8 +12,12 @@ const botonCerrarPanel = document.getElementById('cerrar-panel-info');
 const botonMenuCapas = document.getElementById('boton-menu-capas');
 const listaCapas = document.getElementById('lista-capas');
 const enlaceMantenimiento = document.getElementById('enlace-mantenimiento');
+const botonVersion = document.getElementById('boton-version');
 
 enlaceMantenimiento.innerHTML = ICONOS.ajustes;
+
+botonVersion.textContent = `v${APP_VERSION}`;
+botonVersion.addEventListener('click', () => window.location.reload());
 
 botonCerrarPanel.innerHTML = ICONOS.cerrar;
 botonCerrarPanel.addEventListener('click', () => panelInfo.classList.add('oculto'));
