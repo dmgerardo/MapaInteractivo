@@ -122,6 +122,11 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   descrito arriba: ocultar una capa la agrega a `capasOcultasPorUsuario` en
   `js/main.js`, es estado de sesión (no se guarda en Firebase, el cliente no tiene
   permiso de escritura ahí — ver Sección 8).
+- **Vista inicial centrada en México** (`CENTRO_MEXICO`, `js/main.js`): el
+  `pointOfView` de arranque usa el centro geográfico aproximado del país
+  (`lat: 23.6345, lng: -102.5528`) en vez del `(0,0)` por defecto de globe.gl —
+  aplica sin importar qué vista (`satelite`/`satelite-fronteras`/`fronteras`)
+  esté activa al cargar.
 - **Menú de vista del mapa** (`#menu-vista`, abajo a la derecha, `js/main.js`):
   tres modos — `satelite` (default), `satelite-fronteras` (misma imagen satelital +
   contorno de países) y `fronteras` (mapa político plano, sin satélite, al estilo
@@ -133,7 +138,40 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   `<canvas>` de 2×2px en tiempo de ejecución (`generarColorPlano()`), no es un
   archivo de imagen — evita depender de un asset extra solo para un color sólido.
   Usa las capas `polygonsData`/`polygonCapColor`/`polygonStrokeColor` de globe.gl,
-  no `htmlElementsData` (esa es para los marcadores de eventos).
+  no `htmlElementsData` (esa es para los marcadores de eventos). El
+  `polygonAltitude` de `fronteras` es `0.012`, más alto que el de
+  `satelite-fronteras` (`0.001`) — a una altitud tan baja las paredes laterales de
+  países grandes y cóncavos (ej. Brasil) generaban z-fighting visible (picos/rayas
+  parpadeantes); en `satelite-fronteras` no aplica porque ahí la pared es
+  transparente.
+- **Detalle progresivo por zoom en los modos con fronteras** (2026-08-21,
+  `js/main.js`): además de las fronteras de país (siempre visibles en estos dos
+  modos), se agregan fronteras estatales/provinciales y nombres de país/estado/
+  ciudad según la altitud de cámara — mismo espíritu "estilo Google Maps" que pidió
+  el usuario, sin tile server ni librería nueva. Reutiliza el `.onZoom()` que ya
+  alimenta `alCambiarCamara()`, no hay mecanismo de detección de zoom aparte.
+  Tres niveles (`nivelParaAltitud()`): país siempre · +estados bajo
+  `UMBRAL_ALTITUD_ESTADOS` (`1.0`) · +ciudades bajo `UMBRAL_ALTITUD_CIUDADES`
+  (`0.4`) — solo se recalcula cuando el nivel realmente cambia, no en cada tick de
+  zoom. Estados y ciudades se descargan perezosamente igual que `obtenerPaises()`
+  (`obtenerEstados()`/`obtenerLugares()`, Natural Earth 50m y 110m respectivamente
+  — Natural Earth no publica fronteras estatales a 110m, por eso el nivel de
+  detalle no es uniforme entre las tres fuentes) pero **degradan a "sin detalle
+  extra" si la fuente falla** (`try/catch` → `[]`) en vez de romper el resto del
+  mapa — es mejora visual, no dato del que dependa la app. Las fronteras
+  estatales se pintan con relleno transparente (solo el trazo) para no repintar
+  encima del color del país. Los nombres se dibujan con la capa `labelsData` de
+  globe.gl (`labelLat`/`labelLng`/`labelText`, tamaño/color según el nivel), con
+  un centroide aproximado por promedio de vértices del anillo más grande de cada
+  polígono (`centroideDePoligono()`) — no es un centroide geográfico exacto, solo
+  necesita alcanzar para ubicar el texto.
+- **Giro automático** (`#menu-giro`, junto al menú de vista, `js/main.js`):
+  usa directo `globo.controls().autoRotate`/`.autoRotateSpeed` — son propiedades
+  de los controles de three.js/OrbitControls que expone globe.gl, no hace falta
+  estado ni librería propia. El botón alterna ícono `reproducir`/`pausar`
+  (`js/iconos.js`) según el estado; un slider (`#control-velocidad-giro`) que solo
+  aparece mientras gira ajusta `autoRotateSpeed` en vivo. Preferencia de sesión,
+  no se guarda en Firebase (mismo criterio que `capasOcultasPorUsuario`).
 - **Reporte de elementos en vista** (`#panel-reporte`, botón junto al de capas,
   `js/main.js`): lista en vivo de los eventos que caen en el **hemisferio visible**
   respecto a la cámara actual — mismo criterio de "cerca/lejos de la cámara" que
