@@ -33,6 +33,20 @@ html, body {
   gap: 0.4rem;
 }
 
+#encabezado h1 #marca-app {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: inline-block;
+  align-self: center;
+  color: #4fc3f7;
+}
+
+#encabezado h1 #marca-app svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 #boton-version {
   pointer-events: auto;
   border: none;
