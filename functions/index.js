@@ -1,6 +1,8 @@
 // Agente "eventos geológicos": puebla /capas/eventosGeologicos y
 // /eventos/eventosGeologicos con sismos recientes. Ver AGENTS.md sección 8/9.
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { logger } = require('firebase-functions');
@@ -118,4 +120,138 @@ async function buscarNoticia(lugar) {
 exports.actualizarEventosGeologicos = onSchedule(
   { schedule: 'every 24 hours', timeZone: 'America/Mexico_City', timeoutSeconds: 300 },
   actualizarEventosGeologicos,
+);
+
+// Agente "riesgo operativo": la búsqueda de noticias la hace una sesión programada de
+// Claude Code (con web search real, ver AGENTS.md sección 8.3), no esta función — esta
+// función es solo el punto de escritura protegido, sigue el mismo principio que el
+// resto del proyecto de que el Admin SDK solo se toca desde el backend. Ver
+// AGENTS.md sección 8.3.
+const RIESGO_INGEST_TOKEN = defineSecret('RIESGO_INGEST_TOKEN');
+
+const METADATA_CAPAS_RIESGO = {
+  riesgoOrdenPublico: {
+    nombre: 'Orden público',
+    descripcion: 'Protestas, bloqueos, huelgas e inestabilidad política',
+    color: '#d32f2f',
+    categoria: 'orden-publico',
+  },
+  riesgoSeguridad: {
+    nombre: 'Seguridad',
+    descripcion: 'Crimen organizado y extorsión a transportistas',
+    color: '#6a1b9a',
+    categoria: 'seguridad',
+  },
+  riesgoVialidad: {
+    nombre: 'Vialidad',
+    descripcion: 'Obras y cierres viales en corredores clave',
+    color: '#f9a825',
+    categoria: 'vialidad',
+  },
+  riesgoClima: {
+    nombre: 'Clima extremo',
+    descripcion: 'Fenómenos climáticos extremos con impacto operativo',
+    color: '#0288d1',
+    categoria: 'clima',
+  },
+  riesgoAduanas: {
+    nombre: 'Aduanas y fronteras',
+    descripcion: 'Cierres de frontera o aduana',
+    color: '#00695c',
+    categoria: 'aduanas',
+  },
+};
+
+// Las claves de Realtime Database no pueden llevar . # $ [ ] / ni control chars — el
+// slug lo arma el LLM que llama a este endpoint, pero se sanea también acá por si acaso.
+function sanitizarId(id) {
+  return String(id).trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function validarEvento(evento) {
+  return (
+    evento &&
+    typeof evento.id === 'string' && evento.id.trim() !== '' &&
+    typeof evento.lat === 'number' && typeof evento.lon === 'number' &&
+    typeof evento.titulo === 'string' && evento.titulo.trim() !== '' &&
+    typeof evento.fechaUTC === 'string'
+  );
+}
+
+async function ingerirRiesgoOperativoHandler(req, res) {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'method not allowed' });
+    return;
+  }
+
+  const auth = req.get('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length) : '';
+  if (token !== RIESGO_INGEST_TOKEN.value()) {
+    res.status(401).json({ error: 'unauthorized' });
+    return;
+  }
+
+  const capasPayload = (req.body && req.body.capas) || {};
+  const capaIdsDesconocidos = Object.keys(capasPayload).filter((id) => !METADATA_CAPAS_RIESGO[id]);
+  if (capaIdsDesconocidos.length > 0) {
+    res.status(400).json({ error: `capaId desconocido: ${capaIdsDesconocidos.join(', ')}` });
+    return;
+  }
+  for (const [capaId, eventos] of Object.entries(capasPayload)) {
+    if (!Array.isArray(eventos) || !eventos.every(validarEvento)) {
+      res.status(400).json({ error: `eventos inválidos en ${capaId} (requiere id, lat, lon, titulo, fechaUTC)` });
+      return;
+    }
+  }
+
+  const db = getDatabase();
+  const ahoraUTC = new Date().toISOString();
+  const actualizaciones = {};
+  const resumen = {};
+
+  for (const [capaId, meta] of Object.entries(METADATA_CAPAS_RIESGO)) {
+    const eventos = capasPayload[capaId] || [];
+
+    actualizaciones[`capas/${capaId}`] = {
+      nombre: meta.nombre,
+      descripcion: meta.descripcion,
+      color: meta.color,
+      activa: true,
+    };
+
+    const idsVigentes = new Set();
+    for (const evento of eventos) {
+      const id = sanitizarId(evento.id);
+      if (!id) continue;
+      idsVigentes.add(id);
+      actualizaciones[`eventos/${capaId}/${id}`] = {
+        lat: evento.lat,
+        lon: evento.lon,
+        titulo: evento.titulo,
+        descripcion: evento.descripcion || '',
+        categoria: meta.categoria,
+        nivelRiesgo: typeof evento.nivelRiesgo === 'number' ? evento.nivelRiesgo : null,
+        fechaUTC: evento.fechaUTC,
+        fuenteUrl: evento.fuenteUrl || null,
+        creadoUTC: ahoraUTC,
+      };
+    }
+
+    // Reemplazo completo por capa: lo que no vino en esta corrida ya no está activo
+    // ("silencio = despejado", ver AGENTS.md sección 8.3) y se borra.
+    const existentesSnap = await db.ref(`eventos/${capaId}`).get();
+    const idsHuerfanos = Object.keys(existentesSnap.val() || {}).filter((id) => !idsVigentes.has(id));
+    for (const id of idsHuerfanos) actualizaciones[`eventos/${capaId}/${id}`] = null;
+
+    resumen[capaId] = { escritos: idsVigentes.size, borrados: idsHuerfanos.length };
+  }
+
+  await db.ref().update(actualizaciones);
+  logger.info('Ingesta de riesgo operativo', resumen);
+  res.status(200).json({ ok: true, resumen });
+}
+
+exports.ingerirRiesgoOperativo = onRequest(
+  { secrets: [RIESGO_INGEST_TOKEN], timeoutSeconds: 60 },
+  ingerirRiesgoOperativoHandler,
 );

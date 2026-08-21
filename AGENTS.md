@@ -371,6 +371,68 @@ real, distinto del resto de la app que es de solo lectura.
   capas). Decidido así porque el link de "Iniciar sesión" en la esquina pasaba
   fácilmente desapercibido.
 
+## 8.3 Agente de riesgo operativo (búsqueda en Claude Code + escritura en Cloud Function)
+
+Decidido 2026-08-21: a diferencia del patrón de la sección 8.1 (una Cloud
+Function hace todo el trabajo), este agente **reparte el trabajo en dos
+partes** porque la investigación necesita búsqueda web real tipo LLM, algo
+que una Cloud Function no hace bien ni barato por su cuenta:
+
+- **La "cabeza" (búsqueda + clasificación) corre en una sesión programada de
+  Claude Code** (una Routine, no una Cloud Function), siguiendo
+  `.claude/skills/riesgo-operativo-mapa/SKILL.md` — mismo repo, para que
+  cualquier sesión (local o programada) la vea. Cubre 4 categorías
+  geolocalizables: orden público, seguridad/crimen organizado, vialidad y
+  clima extremo, más cierres de aduana. **No cubre commodities, combustibles
+  ni flete marítimo** (no son eventos con ubicación) ni sismos/erupciones (ya
+  cubiertos por `eventosGeologicos`, sección 8.1).
+- **La escritura en Firebase sigue siendo exclusiva de una Cloud Function**
+  (`ingerirRiesgoOperativo`, `functions/index.js`, HTTPS `onRequest`) — se
+  mantiene el principio de que el Admin SDK solo se toca desde el backend,
+  nunca desde una credencial portátil. Como es un endpoint HTTPS público (a
+  diferencia de `onSchedule`, que nadie externo puede invocar), está protegido
+  con un token simple vía Firebase Secret Manager
+  (`defineSecret('RIESGO_INGEST_TOKEN')`) — un token opaco acotado a este
+  endpoint, no una llave de servicio completa. El mismo valor debe existir
+  como variable de entorno en el entorno de Claude Code que corre la Routine,
+  para que el `curl` final la mande en `Authorization: Bearer`.
+
+**5 capas nuevas** (mismo esquema genérico de `/capas`/`/eventos`, sección 8,
+sin campos nuevos — reutiliza `nivelRiesgo`, el mismo campo numérico que ya
+muestra `mostrarPanelEvento()` en `js/main.js` sin tocar código):
+
+| capaId | categoria (ícono en `js/iconos.js`) | agrupa |
+|---|---|---|
+| `riesgoOrdenPublico` | `orden-publico` | protestas, bloqueos, huelgas, inestabilidad política |
+| `riesgoSeguridad` | `seguridad` | crimen organizado, extorsión a transportistas |
+| `riesgoVialidad` | `vialidad` | obras/cierres viales no ligados a protesta |
+| `riesgoClima` | `clima` | clima extremo, inundaciones/derrumbes por lluvia |
+| `riesgoAduanas` | `aduanas` | cierres de frontera o aduana |
+
+La metadata de estas 5 capas (nombre/color/`categoria`) vive hardcodeada en
+`ingerirRiesgoOperativo` (`METADATA_CAPAS_RIESGO`) — el payload que manda la
+skill **no** incluye `categoria`, la pone la función a partir del `capaId`,
+para no depender de que el LLM la escriba bien.
+
+**Semántica "silencio = despejado":** cada corrida hace **reemplazo completo
+por capa** — la skill siempre manda las 5 claves (arreglo vacío si esa
+categoría no tuvo novedad), y la función borra en cada capa cualquier evento
+que no haya venido en el payload de esa corrida (mismo patrón de
+`idsHuerfanos` que ya usa `actualizarEventosGeologicos`, sección 8.1). El
+`id` de cada evento es un slug estable armado por la skill
+(`{país}-{ciudad}-{tipo}`), no `push()`, para que una alerta que sigue activa
+al día siguiente se actualice en vez de duplicarse.
+
+**Programación:** una Routine de Claude Code (`create_new_session_on_fire`),
+una vez al día, que clona/usa este repo y sigue la skill. No usa Cloud
+Scheduler porque quien dispara el trabajo es una sesión de Claude Code, no
+Firebase.
+
+⚠️ **Reemplaza al skill de chat `reporte-riesgo-operativo`** (reporte en
+Markdown/HTML bajo demanda) — se retiró porque esta información ahora vive en
+el mapa. El skill `gv-reporte-riesgo-operativo` (de otro contexto/usuario) no
+se tocó.
+
 ## 9. Documentación viva
 
 - **`AGENTS.md`** (con `CLAUDE.md` apuntando a él en una línea) es la fuente de
