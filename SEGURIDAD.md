@@ -65,6 +65,20 @@
    despliega código, no es la identidad que corre la función.
    Fuentes de datos externas usadas por este agente (USGS, Google News RSS) son
    de solo lectura pública, sin API key ni credencial que proteger.
+5. ✅ **Fase 5 — hecha (2026-08-21)**: segundo agente (`riesgoOperativo`,
+   `AGENTS.md` sección 8.3) reparte el trabajo distinto — la búsqueda corre en
+   una sesión programada de Claude Code, no en una Cloud Function, así que la
+   escritura pasa por un endpoint HTTPS nuevo (`ingerirRiesgoOperativo`) que sí
+   es alcanzable desde fuera del proyecto (a diferencia de `onSchedule`, que
+   nadie externo puede invocar). Se protegió con un secreto de Firebase Secret
+   Manager (`defineSecret('RIESGO_INGEST_TOKEN')`) verificado en
+   `Authorization: Bearer` — un **token opaco acotado a este único endpoint**,
+   deliberadamente no una llave de servicio del Admin SDK: si se filtrara, solo
+   permite escribir/borrar eventos en las 5 capas de riesgo operativo, nunca
+   leer ni tocar el resto de la base. El mismo valor vive duplicado (Secret
+   Manager del lado de la función, variable de entorno del lado del entorno de
+   Claude Code que corre la Routine) — si se rota, hay que actualizarlo en los
+   dos lugares o la ingesta empieza a fallar con 401.
 
 ## Severidad si se saltara este plan
 
