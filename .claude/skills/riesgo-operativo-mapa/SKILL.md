@@ -21,7 +21,7 @@ existe esta skill, cómo se reparte el trabajo con la Cloud Function
 Eres un analista de riesgo operativo. A diferencia del reporte de texto que
 existía antes, **no cubras commodities, combustibles ni flete marítimo** —
 esos no son eventos geolocalizables y quedaron fuera de este agente a
-propósito. Cubre solo las cuatro categorías de la tabla de abajo.
+propósito. Cubre solo las cinco categorías de la tabla de abajo.
 
 No uses datos de tu entrenamiento para alertas o noticias — todo dato debe
 venir de búsquedas web hechas en el momento de ejecución. Resuelve la fecha de
@@ -35,7 +35,11 @@ recientes (zona horaria Ciudad de México, UTC-6); no preguntes al usuario.
 Usa **exactamente estas coordenadas** para cada ciudad — no las inventes ni
 las aproximes de memoria. Si una alerta es de una carretera/corredor entre dos
 ciudades de la lista, usa las coordenadas de la ciudad monitoreada más cercana
-al tramo afectado.
+al tramo afectado. Si una alerta ocurre en un municipio conurbado a una ciudad
+monitoreada pero que no aparece en la tabla (ej. Nezahualcóyotl o Ecatepec,
+ambos parte de la zona metropolitana de CDMX), **no la descartes** — usa las
+coordenadas de la ciudad monitoreada más cercana de todas formas, y menciona
+el nombre real del municipio en el `titulo`/`descripcion`.
 
 | Ciudad | País | lat | lon |
 |---|---|---|---|
@@ -86,7 +90,7 @@ del `capaId`, tú solo mandas el `capaId` correcto:
 |---|---|---|
 | `riesgoOrdenPublico` | Protestas, marchas, bloqueos de accesos, huelgas y paros laborales, inestabilidad política (decretos/medidas que afecten comercio) | según impacto |
 | `riesgoSeguridad` | Inseguridad y crimen organizado — bloqueos de cárteles, extorsión a transportistas | normalmente alto |
-| `riesgoVialidad` | Obras y mantenimiento vial con cierres o reducción de carriles en corredores clave (**no** ligado a una protesta — eso va en `riesgoOrdenPublico`) | según cierre |
+| `riesgoVialidad` | Obras y mantenimiento vial, **y también accidentes/incidentes de tránsito** (choques, volcaduras, derrames) con cierre o reducción de carriles en corredores clave — cualquier causa **no** ligada a una protesta (eso va en `riesgoOrdenPublico`) ni a clima (eso va en `riesgoClima`) | según cierre |
 | `riesgoClima` | Fenómenos climáticos extremos (lluvias severas, ciclones, nevadas, inundaciones, calor extremo, derrumbes causados por lluvia) | según severidad |
 | `riesgoAduanas` | Cierres de frontera o aduana | según duración |
 
@@ -111,6 +115,7 @@ de hoy:
 - "bloqueos autopista México Querétaro El Marqués carretera 57 [fecha]"
 - "reporte CAPUFE Guardia Nacional Carreteras hoy [fecha]"
 - "obras mantenimiento autopistas México-Querétaro Querétaro-Celaya [fecha]"
+- "accidente choque volcadura autopista carretera México hoy [fecha]"
 - "cierre frontera aduana México [fecha]"
 - "protestas bloqueos huelgas Guatemala El Salvador Costa Rica [fecha]"
 - "protestas paro huelga Colombia Ecuador Perú [fecha]"

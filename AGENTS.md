@@ -405,7 +405,7 @@ muestra `mostrarPanelEvento()` en `js/main.js` sin tocar código):
 |---|---|---|
 | `riesgoOrdenPublico` | `orden-publico` | protestas, bloqueos, huelgas, inestabilidad política |
 | `riesgoSeguridad` | `seguridad` | crimen organizado, extorsión a transportistas |
-| `riesgoVialidad` | `vialidad` | obras/cierres viales no ligados a protesta |
+| `riesgoVialidad` | `vialidad` | obras/cierres viales y accidentes/incidentes de tránsito, no ligados a protesta ni a clima |
 | `riesgoClima` | `clima` | clima extremo, inundaciones/derrumbes por lluvia |
 | `riesgoAduanas` | `aduanas` | cierres de frontera o aduana |
 
