@@ -203,27 +203,44 @@ form.addEventListener('submit', async (ev) => {
     fotoUrl: fotoUrlActual,
   };
 
-  if (idEnEdicion) {
-    await actualizar(`eventos/${CAPA_ID}/${idEnEdicion}`, datos);
-  } else {
-    await agregar(`eventos/${CAPA_ID}`, { ...datos, creadoUTC: new Date().toISOString() });
+  try {
+    if (idEnEdicion) {
+      await actualizar(`eventos/${CAPA_ID}/${idEnEdicion}`, datos);
+    } else {
+      await agregar(`eventos/${CAPA_ID}`, { ...datos, creadoUTC: new Date().toISOString() });
+    }
+    cerrarFormulario();
+  } catch (error) {
+    window.alert(`No se pudo guardar: ${error.message}`);
   }
-  cerrarFormulario();
 });
 
 async function asegurarCapa() {
-  await actualizar(`capas/${CAPA_ID}`, {
-    nombre: 'Mis Localidades',
-    descripcion: 'Localidades registradas manualmente',
-    color: '#8e44ad',
-    activa: true,
-  });
+  try {
+    await actualizar(`capas/${CAPA_ID}`, {
+      nombre: 'Mis Localidades',
+      descripcion: 'Localidades registradas manualmente',
+      color: '#8e44ad',
+      activa: true,
+    });
+  } catch (error) {
+    console.error('TEMPORAL diagnóstico: asegurarCapa falló:', error.message);
+  }
 }
 
-onCambioSesion((usuario) => {
+onCambioSesion(async (usuario) => {
   usuarioActual = usuario;
   renderZonaSesion();
   renderizarLista();
+  if (usuario) {
+    // TEMPORAL — diagnóstico de permission_denied, quitar una vez resuelto.
+    const token = await usuario.getIdTokenResult();
+    console.info('TEMPORAL diagnóstico auth:', {
+      email_authUser: usuario.email,
+      email_token: token.claims.email,
+      email_verified: token.claims.email_verified,
+    });
+  }
   if (esAdmin(usuario)) asegurarCapa();
 });
 
