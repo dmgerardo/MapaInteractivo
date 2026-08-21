@@ -96,9 +96,12 @@ function esperar(ms) {
 // respaldo — nunca deja el evento sin fuente.
 async function buscarNoticia(lugar) {
   try {
-    const consulta = encodeURIComponent(`sismo ${lugar}`);
+    // El "place" de USGS suele venir como "62 km NNW of Ende, Indonesia" — buscar ese
+    // texto literal casi nunca matchea una noticia real. Se busca solo el nombre del
+    // lugar (lo que sigue al "of "), que sí es lo que usaría un titular de noticias.
+    const lugarBusqueda = lugar.replace(/^[\d.]+\s*km\s+[NSEW]*\s*of\s+/i, '');
+    const consulta = encodeURIComponent(`sismo ${lugarBusqueda}`);
     const respuesta = await fetch(`https://news.google.com/rss/search?q=${consulta}&hl=es-419&gl=MX&ceid=MX:es-419`);
-    logger.info(`TEMPORAL buscarNoticia("${lugar}") -> HTTP ${respuesta.status}`);
     if (!respuesta.ok) return null;
     const xml = await respuesta.text();
     // No basta con tomar el segundo <link> del XML completo: <channel><image> también

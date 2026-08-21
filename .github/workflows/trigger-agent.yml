@@ -23,8 +23,3 @@ jobs:
           gcloud scheduler jobs run "${{ inputs.job_name }}" \
             --location "${{ inputs.location }}" \
             --project globo-01
-      - name: TEMPORAL — logs
-        run: |
-          sleep 25
-          gcloud functions logs read "actualizarEventosGeologicos" \
-            --region "${{ inputs.location }}" --project globo-01 --gen2 --limit 100
