@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=4';
-import { esc, urlSegura } from './utilidades.js?v=4';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=4';
-import { APP_VERSION } from './version.js?v=4';
+import { suscribir } from './db.js?v=5';
+import { esc, urlSegura } from './utilidades.js?v=5';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=5';
+import { APP_VERSION } from './version.js?v=5';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -13,6 +13,9 @@ const botonMenuCapas = document.getElementById('boton-menu-capas');
 const listaCapas = document.getElementById('lista-capas');
 const botonMenuVista = document.getElementById('boton-menu-vista');
 const listaVistas = document.getElementById('lista-vistas');
+const botonGiro = document.getElementById('boton-giro');
+const panelGiro = document.getElementById('panel-giro');
+const controlVelocidadGiro = document.getElementById('control-velocidad-giro');
 const botonReporte = document.getElementById('boton-reporte');
 const panelReporte = document.getElementById('panel-reporte');
 const botonCerrarReporte = document.getElementById('cerrar-panel-reporte');
@@ -51,9 +54,48 @@ const globo = Globe()(contenedor)
   .htmlLng('lon')
   .htmlElement(crearMarcadorEvento)
   .htmlElementVisibilityModifier((el, esVisible) => { el.style.opacity = esVisible ? 1 : 0; })
-  .onZoom(alCambiarCamara);
+  .onZoom(alCambiarCamara)
+  // Etiquetas de país/estado/ciudad del modo Fronteras (ver "Detalle por zoom" más
+  // abajo) — accesores fijos, el contenido se actualiza con .labelsData() según el
+  // nivel de zoom.
+  .labelLat('lat')
+  .labelLng('lon')
+  .labelText('texto')
+  .labelSize((d) => (d.nivel === 'pais' ? 1.15 : d.nivel === 'estado' ? 0.75 : 0.5))
+  .labelColor((d) => (d.nivel === 'pais' ? 'rgba(40,40,40,0.9)' : d.nivel === 'estado' ? 'rgba(70,70,70,0.85)' : 'rgba(90,90,90,0.85)'))
+  .labelDotRadius(0)
+  .labelResolution(3)
+  .labelAltitude(0.005);
 
-globo.pointOfView({ altitude: 2.5 });
+// Centro de México (Zacatecas, aprox. geográfico del país) — el globo abre ahí en
+// vez del (0,0) por defecto de globe.gl.
+const CENTRO_MEXICO = { lat: 23.6345, lng: -102.5528 };
+globo.pointOfView({ ...CENTRO_MEXICO, altitude: 2.5 });
+
+// --- Giro automático ---------------------------------------------------------------
+// globe.gl expone los controles de three.js/OrbitControls tal cual — autoRotate y
+// autoRotateSpeed son propiedades de ese objeto, no hace falta estado propio ni
+// librería nueva. Es preferencia de sesión (como capasOcultasPorUsuario), no se
+// guarda en Firebase.
+
+let girando = false;
+
+function alternarGiro() {
+  girando = !girando;
+  globo.controls().autoRotate = girando;
+  botonGiro.innerHTML = girando ? ICONOS.pausar : ICONOS.reproducir;
+  botonGiro.classList.toggle('activo', girando);
+  botonGiro.setAttribute('aria-expanded', String(girando));
+  panelGiro.classList.toggle('oculto', !girando);
+}
+
+botonGiro.innerHTML = ICONOS.reproducir;
+botonGiro.addEventListener('click', alternarGiro);
+
+globo.controls().autoRotateSpeed = Number(controlVelocidadGiro.value);
+controlVelocidadGiro.addEventListener('input', () => {
+  globo.controls().autoRotateSpeed = Number(controlVelocidadGiro.value);
+});
 
 function ajustarTamano() {
   globo.width(contenedor.clientWidth).height(contenedor.clientHeight);
@@ -171,6 +213,12 @@ suscribir('eventos', (datos) => {
 const URL_SATELITE = '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
 const URL_TOPOLOGIA = '//unpkg.com/three-globe/example/img/earth-topology.png';
 const URL_PAISES_GEOJSON = '//unpkg.com/three-globe/example/country-polygons/ne_110m_admin_0_countries.geojson';
+// Fronteras estatales/provinciales y ciudades — Natural Earth no las bundlea con
+// three-globe (solo trae países), así que se traen de un mirror del repo oficial de
+// Natural Earth. 50m para estados (Natural Earth no publica admin-1 a 110m) y 110m
+// para ciudades (alcanza para "ciudades principales por país", que es el objetivo).
+const URL_ESTADOS_GEOJSON = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector/geojson/ne_50m_admin_1_states_provinces.geojson';
+const URL_LUGARES_GEOJSON = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector/geojson/ne_110m_populated_places.geojson';
 
 const VISTAS = [
   { id: 'satelite', nombre: 'Satelital' },
@@ -180,6 +228,8 @@ const VISTAS = [
 
 let vistaActual = 'satelite';
 let paisesGeoJSON = null;
+let estadosGeoJSON = null;
+let lugaresGeoJSON = null;
 
 // Un color plano generado en canvas (en vez de un archivo de imagen) para el modo
 // "solo fronteras" — evita depender de un asset extra solo para un color sólido.
@@ -203,35 +253,166 @@ async function obtenerPaises() {
   return paisesGeoJSON;
 }
 
+// A diferencia de obtenerPaises(), estas dos degradan a "sin detalle extra" en vez de
+// romper el resto del mapa si la fuente externa falla o cambia de URL — son mejora
+// visual, no datos de los que dependa el resto de la app.
+async function obtenerEstados() {
+  if (!estadosGeoJSON) {
+    try {
+      const respuesta = await fetch(URL_ESTADOS_GEOJSON);
+      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+      const datos = await respuesta.json();
+      estadosGeoJSON = datos.features;
+    } catch (error) {
+      console.warn('No se pudieron cargar las fronteras estatales:', error);
+      estadosGeoJSON = [];
+    }
+  }
+  return estadosGeoJSON;
+}
+
+async function obtenerLugares() {
+  if (!lugaresGeoJSON) {
+    try {
+      const respuesta = await fetch(URL_LUGARES_GEOJSON);
+      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+      const datos = await respuesta.json();
+      lugaresGeoJSON = datos.features;
+    } catch (error) {
+      console.warn('No se pudieron cargar los nombres de ciudades:', error);
+      lugaresGeoJSON = [];
+    }
+  }
+  return lugaresGeoJSON;
+}
+
+// El nombre del campo varía según la versión/export de Natural Earth — se prueban
+// las variantes conocidas en vez de asumir una sola.
+function nombreDeFeature(feature) {
+  const p = feature.properties || {};
+  return p.NAME || p.name || p.NAMEASCII || p.nameascii || p.NAME_EN || '';
+}
+
+// Centroide aproximado (promedio de vértices, no ponderado por área) del anillo con
+// más puntos de la geometría — alcanza para ubicar una etiqueta de texto, evita que
+// una isla o exclave pequeño jale la etiqueta fuera del territorio principal. No es
+// un centroide geográfico exacto, no hace falta para este uso.
+function centroideDePoligono(feature) {
+  const geom = feature.geometry;
+  if (!geom) return null;
+  const anillos = geom.type === 'Polygon' ? [geom.coordinates[0]]
+    : geom.type === 'MultiPolygon' ? geom.coordinates.map((poligono) => poligono[0])
+    : [];
+  if (anillos.length === 0) return null;
+  const anilloPrincipal = anillos.reduce((mayor, actual) => (actual.length > mayor.length ? actual : mayor));
+  let sumaLon = 0;
+  let sumaLat = 0;
+  for (const [lon, lat] of anilloPrincipal) {
+    sumaLon += lon;
+    sumaLat += lat;
+  }
+  return { lat: sumaLat / anilloPrincipal.length, lon: sumaLon / anilloPrincipal.length };
+}
+
+// --- Detalle progresivo por zoom (solo en Fronteras / Satelital+fronteras) --------
+// Mismo espíritu que obtenerPaises(): fetch perezoso una sola vez, cacheado. Los 3
+// niveles (país siempre, +estado, +ciudad) se activan por la altitud de cámara que ya
+// entrega .onZoom() — no hace falta un mecanismo de detección de zoom nuevo.
+
+const UMBRAL_ALTITUD_ESTADOS = 1.0;
+const UMBRAL_ALTITUD_CIUDADES = 0.4;
+// Subido de 0.001: a esa altitud tan baja, las paredes laterales de países grandes y
+// cóncavos (ej. Brasil) generaban z-fighting visible (picos/rayas parpadeantes) a la
+// distancia de cámara de este modo. En "satelite-fronteras" no aplica porque ahí las
+// paredes son transparentes.
+const ALTITUD_POLIGONO_FRONTERAS = 0.012;
+const ALTITUD_POLIGONO_SATELITE_FRONTERAS = 0.001;
+
+let nivelDetalleActual = null; // 'pais' | 'estado' | 'ciudad' — evita recalcular en cada tick de zoom
+
+function nivelParaAltitud(altitude) {
+  if (altitude < UMBRAL_ALTITUD_CIUDADES) return 'ciudad';
+  if (altitude < UMBRAL_ALTITUD_ESTADOS) return 'estado';
+  return 'pais';
+}
+
+async function construirPoligonosFronteras(nivel) {
+  const paises = (await obtenerPaises()).map((f) => ({ ...f, nivel: 'pais' }));
+  if (nivel === 'pais') return paises;
+  const estados = (await obtenerEstados()).map((f) => ({ ...f, nivel: 'estado' }));
+  return paises.concat(estados);
+}
+
+async function construirEtiquetasFronteras(nivel) {
+  const etiquetas = [];
+  for (const feature of await obtenerPaises()) {
+    const centro = centroideDePoligono(feature);
+    const texto = nombreDeFeature(feature);
+    if (centro && texto) etiquetas.push({ ...centro, texto, nivel: 'pais' });
+  }
+  if (nivel === 'estado' || nivel === 'ciudad') {
+    for (const feature of await obtenerEstados()) {
+      const centro = centroideDePoligono(feature);
+      const texto = nombreDeFeature(feature);
+      if (centro && texto) etiquetas.push({ ...centro, texto, nivel: 'estado' });
+    }
+  }
+  if (nivel === 'ciudad') {
+    for (const feature of await obtenerLugares()) {
+      const texto = nombreDeFeature(feature);
+      if (feature.geometry?.type === 'Point' && texto) {
+        const [lon, lat] = feature.geometry.coordinates;
+        etiquetas.push({ lat, lon, texto, nivel: 'ciudad' });
+      }
+    }
+  }
+  return etiquetas;
+}
+
+async function actualizarDetallePorZoom(altitude) {
+  if (vistaActual !== 'fronteras' && vistaActual !== 'satelite-fronteras') return;
+  const nivel = nivelParaAltitud(altitude);
+  if (nivel === nivelDetalleActual) return;
+  nivelDetalleActual = nivel;
+
+  const [poligonos, etiquetas] = await Promise.all([
+    construirPoligonosFronteras(nivel),
+    construirEtiquetasFronteras(nivel),
+  ]);
+  globo.polygonsData(poligonos).labelsData(etiquetas);
+}
+
 async function aplicarVista(vista) {
   vistaActual = vista;
   renderizarMenuVista();
+  nivelDetalleActual = null; // fuerza recalcular el detalle para la vista nueva
 
   if (vista === 'satelite') {
-    globo.globeImageUrl(URL_SATELITE).bumpImageUrl(URL_TOPOLOGIA).polygonsData([]);
+    globo.globeImageUrl(URL_SATELITE).bumpImageUrl(URL_TOPOLOGIA).polygonsData([]).labelsData([]);
     return;
   }
 
-  const paises = await obtenerPaises();
+  await obtenerPaises();
   if (vista === 'satelite-fronteras') {
     globo
       .globeImageUrl(URL_SATELITE)
       .bumpImageUrl(URL_TOPOLOGIA)
-      .polygonsData(paises)
       .polygonCapColor(() => 'rgba(0,0,0,0)')
       .polygonSideColor(() => 'rgba(0,0,0,0)')
-      .polygonStrokeColor(() => 'rgba(255,255,255,0.85)')
-      .polygonAltitude(0.001);
+      .polygonStrokeColor((d) => (d.nivel === 'estado' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.85)'))
+      .polygonAltitude(ALTITUD_POLIGONO_SATELITE_FRONTERAS);
   } else if (vista === 'fronteras') {
     globo
       .globeImageUrl(OCEANO_PLANO)
       .bumpImageUrl(null)
-      .polygonsData(paises)
-      .polygonCapColor(() => '#f2efe9')
-      .polygonSideColor(() => '#d9d4c7')
-      .polygonStrokeColor(() => '#9aa0a6')
-      .polygonAltitude(0.001);
+      // El estado se pinta transparente (solo el trazo) para no repintar encima del
+      // relleno del país — el efecto es "líneas estatales sobre el mapa político".
+      .polygonCapColor((d) => (d.nivel === 'estado' ? 'rgba(0,0,0,0)' : '#f2efe9'))
+      .polygonSideColor((d) => (d.nivel === 'estado' ? 'rgba(0,0,0,0)' : '#d9d4c7'))
+      .polygonStrokeColor((d) => (d.nivel === 'estado' ? '#c7c2b4' : '#9aa0a6'))
+      .polygonAltitude(ALTITUD_POLIGONO_FRONTERAS);
   }
+  await actualizarDetallePorZoom(camaraActual.altitude ?? 2.5);
 }
 
 function renderizarMenuVista() {
@@ -253,11 +434,12 @@ renderizarMenuVista();
 
 // --- Reporte: elementos actualmente en la vista (hemisferio visible) --------------
 
-let camaraActual = { lat: 0, lng: 0 };
+let camaraActual = { ...CENTRO_MEXICO, altitude: 2.5 };
 
 function alCambiarCamara(pov) {
   camaraActual = pov;
   if (!panelReporte.classList.contains('oculto')) renderizarReporte();
+  actualizarDetallePorZoom(pov.altitude);
 }
 
 // Mismo criterio de "cercano a la cámara" que usa three-globe para decidir qué

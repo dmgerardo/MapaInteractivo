@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mapa Interactivo</title>
-  <link rel="stylesheet" href="css/estilos.css?v=4" />
+  <link rel="stylesheet" href="css/estilos.css?v=5" />
 </head>
 <body>
   <header id="encabezado">
@@ -32,6 +32,14 @@
     <div id="lista-vistas" class="oculto"></div>
   </div>
 
+  <div id="menu-giro">
+    <button id="boton-giro" type="button" aria-label="Girar automáticamente" title="Girar automáticamente" aria-expanded="false"></button>
+    <div id="panel-giro" class="oculto">
+      <label for="control-velocidad-giro">Velocidad</label>
+      <input id="control-velocidad-giro" type="range" min="0.5" max="8" step="0.5" value="2" />
+    </div>
+  </div>
+
   <button id="boton-reporte" type="button" aria-label="Reporte" title="Reporte" aria-expanded="false"></button>
 
   <aside id="panel-reporte" class="oculto" aria-live="polite">
@@ -44,6 +52,6 @@
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
 
   <!-- main.js importa db.js (que a su vez importa firebase-config.js), utilidades.js e iconos.js -->
-  <script type="module" src="js/main.js?v=4"></script>
+  <script type="module" src="js/main.js?v=5"></script>
 </body>
 </html>
