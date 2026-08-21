@@ -109,6 +109,19 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   default sin tener que "activarla" a mano.
 - Todo el idioma de la UI, nombres de variables/funciones y comentarios en el idioma
   definido en la Sección 0.
+- **Eventos sobre el globo**: cada uno se pinta con un ícono SVG según su
+  `categoria` (`js/iconos.js`, objeto `ICONOS_EVENTO`), no con un punto genérico —
+  agrega el ícono correspondiente ahí cuando un agente nuevo introduzca una
+  categoría; si no hay uno, cae en `ICONO_EVENTO_DEFAULT` (un pin genérico), nunca
+  se queda sin ícono. Se implementa con la capa `htmlElementsData` de globe.gl
+  (`.htmlElement()`), no con `pointsData` — permite usar cualquier SVG/HTML en vez
+  de la cápsula 3D default.
+- **Menú flotante de capas** (`#menu-capas`, abajo a la izquierda): un chip por
+  capa existente en `/capas`, generado dinámicamente — nunca hay que tocar el menú
+  a mano al agregar un agente nuevo. Sigue el mismo patrón de `Set` de ocultos
+  descrito arriba: ocultar una capa la agrega a `capasOcultasPorUsuario` en
+  `js/main.js`, es estado de sesión (no se guarda en Firebase, el cliente no tiene
+  permiso de escritura ahí — ver Sección 8).
 
 ## 4. Seguridad — no negociable
 

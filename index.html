@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mapa Interactivo</title>
-  <link rel="stylesheet" href="css/estilos.css?v=3" />
+  <link rel="stylesheet" href="css/estilos.css?v=5" />
 </head>
 <body>
   <header id="encabezado">
@@ -18,10 +18,15 @@
     <div id="panel-info-contenido"></div>
   </aside>
 
+  <div id="menu-capas">
+    <button id="boton-menu-capas" type="button" aria-label="Capas" title="Capas" aria-expanded="false"></button>
+    <div id="lista-capas" class="oculto"></div>
+  </div>
+
   <!-- globe.gl: versión vanilla (sin React) de la misma librería de vasturiano/react-globe.gl -->
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
 
-  <!-- main.js importa db.js (que a su vez importa firebase-config.js) y utilidades.js -->
-  <script type="module" src="js/main.js?v=4"></script>
+  <!-- main.js importa db.js (que a su vez importa firebase-config.js), utilidades.js e iconos.js -->
+  <script type="module" src="js/main.js?v=5"></script>
 </body>
 </html>
