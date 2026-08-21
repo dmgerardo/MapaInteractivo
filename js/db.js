@@ -1,6 +1,6 @@
 // Capa de acceso a datos centralizada — ninguna vista debe llamar a
 // ref.set()/ref.update() directo. Ver AGENTS.md sección 2.
-import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=5';
+import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=6';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
   getDatabase, ref, push, set, update, remove, onValue, off,

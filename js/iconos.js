@@ -20,6 +20,7 @@ export const ICONOS = {
   subirArchivo: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/></svg>',
   reproducir: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>',
   pausar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>',
+  marca: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="15" cy="16" r="9.2"/><path d="M5.8 16h18.4"/><path d="M15 6.8c3.4 2.7 3.4 15.7 0 18.4"/><path d="M15 6.8c-3.4 2.7-3.4 15.7 0 18.4"/></g><circle cx="23.6" cy="9.2" r="3.6" fill="#FF9800"/></svg>',
 };
 
 // Íconos por categoría de evento — se pintan sobre el globo en vez de un punto genérico.
