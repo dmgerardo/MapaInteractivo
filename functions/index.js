@@ -1,6 +1,5 @@
 // Agente "eventos geológicos": puebla /capas/eventosGeologicos y
 // /eventos/eventosGeologicos con sismos recientes. Ver AGENTS.md sección 8/9.
-// (redeploy forzado tras corregir permisos de la cuenta de servicio)
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
