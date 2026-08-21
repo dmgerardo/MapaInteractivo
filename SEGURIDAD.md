@@ -1,6 +1,12 @@
 # Seguridad — deuda conocida y plan
 
-## Estado actual (2026-08-20)
+## Estado actual (2026-08-21)
+
+- **Escritura desde el navegador ahora existe** (capa `misLocalidades`,
+  `mantenimiento.html`), protegida por Firebase Auth (Google) + lista de correos
+  autorizados en las reglas — ver Fase 2 abajo y `AGENTS.md` sección 8.2. El resto
+  de la app (`index.html`, cualquier capa poblada por un agente) sigue siendo
+  estrictamente de solo lectura para el cliente.
 
 - **Realtime Database bloqueada por default en la raíz**: `database.rules.json`
   tiene `.read: false` / `.write: false` en la raíz. Los nodos `capas` y `eventos`
@@ -29,14 +35,17 @@
 1. ✅ **Fase 1 — hecha (2026-08-20)**: modelo de datos de capas/eventos definido con
    regla explícita por nodo (`.read: true` público, `.write: false` para el
    cliente).
-2. **Fase 2 (cuando la UI necesite captura/edición manual desde el navegador)**:
-   agregar Firebase Auth (login con Google o email/password, dado el tope de 10
-   personas del proyecto) y condicionar `write` a `auth != null` como mínimo;
-   evaluar roles (lectura pública / escritura solo para colaboradores) si el caso
-   de uso lo pide. Las escrituras de los agentes vía Admin SDK no dependen de esta
-   fase.
-3. **Fase 3**: revisar `storage.rules` si se agrega Firebase Storage (fotos/adjuntos
-   por evento) — mismo criterio de raíz bloqueada por default.
+2. ✅ **Fase 2 — hecha (2026-08-21)**: Firebase Auth (Google Sign-In,
+   `js/auth.js`) para `mantenimiento.html`, con `write` condicionado no solo a
+   `auth != null` sino a una lista explícita de correos autorizados
+   (`auth.token.email == '...'` en `database.rules.json`) — ver el detalle de los
+   tres lugares que hay que mantener sincronizados en `AGENTS.md` sección 8.2.
+   Las escrituras de los agentes vía Admin SDK nunca dependieron de esta fase.
+3. ✅ **Fase 3 — hecha (2026-08-21)**: `storage.rules` agregado junto con Firebase
+   Storage para las fotos de `misLocalidades` — mismo criterio de raíz bloqueada
+   por default (`allPaths=**` con `read`/`write` en `false`), solo `/localidades/**`
+   tiene reglas explícitas (lectura pública, escritura solo para los correos
+   autorizados, límite de 8 MB y `image/*` obligatorio).
 4. ✅ **Fase 4 — hecha (2026-08-20)**: primer agente real (`eventosGeologicos`,
    `functions/index.js`) corre como **Firebase Cloud Function programada** (2nd
    gen, `onSchedule`, una vez al día) dentro del mismo proyecto `globo-01`. Su

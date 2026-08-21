@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+    // Fotos de "Mis Localidades" — mismo correo autorizado que database.rules.json
+    // para /capas/misLocalidades y /eventos/misLocalidades. Mantener sincronizado
+    // si se agrega un nuevo administrador.
+    match /localidades/{archivo} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.token.email == 'dmgerardo@gmail.com'
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

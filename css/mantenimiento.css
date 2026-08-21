@@ -1,0 +1,318 @@
+body.pagina-mantenimiento {
+  overflow-y: auto;
+  padding-bottom: 2rem;
+}
+
+#encabezado-mantenimiento {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #1c2b3a;
+}
+
+#encabezado-mantenimiento h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.enlace-volver {
+  color: #9db4c9;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.enlace-volver:hover {
+  text-decoration: underline;
+}
+
+#zona-sesion {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+#zona-sesion button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-radius: 8px;
+  background: #142334;
+  color: #f5f5f5;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+#zona-sesion button svg {
+  width: 16px;
+  height: 16px;
+}
+
+#contenido-mantenimiento {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+#barra-acciones {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+#boton-agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4fc3f7;
+  color: #001622;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#boton-agregar .icono-inline svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.fila-localidad {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 10px;
+  background: #0a1622;
+  cursor: pointer;
+}
+
+.fila-localidad:hover {
+  background: #101f30;
+}
+
+.fila-localidad .miniatura {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #142334;
+}
+
+.fila-localidad .info-fila {
+  flex: 1;
+  min-width: 0;
+}
+
+.fila-localidad .info-fila strong {
+  display: block;
+}
+
+.fila-localidad .info-fila span {
+  font-size: 0.8rem;
+  color: #9db4c9;
+}
+
+.mensaje-vacio {
+  color: #9db4c9;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+#fondo-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 30;
+}
+
+#fondo-modal.oculto {
+  display: none;
+}
+
+#modal-localidad {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 31;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #0a1622;
+  border-radius: 14px;
+  padding: 1.5rem;
+}
+
+#modal-localidad.oculto {
+  display: none;
+}
+
+#form-localidad label {
+  display: block;
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.8rem;
+  color: #9db4c9;
+}
+
+#form-localidad input[type="text"],
+#form-localidad input[type="number"],
+#form-localidad input[type="url"],
+#form-localidad textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #1c2b3a;
+  border-radius: 8px;
+  background: #050d16;
+  color: #f5f5f5;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+#form-localidad textarea {
+  resize: vertical;
+}
+
+.fila-dos-columnas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+#campo-foto {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.boton-agregar-foto {
+  width: 3rem;
+  height: 3rem;
+  border: 1px dashed #1c2b3a;
+  border-radius: 10px;
+  background: transparent;
+  color: #9db4c9;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.boton-agregar-foto svg {
+  width: 20px;
+  height: 20px;
+}
+
+.opciones-foto {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.opciones-foto button {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: #142334;
+  color: #f5f5f5;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.opciones-foto button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.previsualizacion-foto {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.previsualizacion-foto img {
+  width: 4rem;
+  height: 4rem;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.previsualizacion-foto button {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: #142334;
+  color: #f5f5f5;
+  cursor: pointer;
+}
+
+.previsualizacion-foto button svg {
+  width: 100%;
+  height: 100%;
+}
+
+.entrada-url-foto {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.entrada-url-foto input {
+  flex: 1;
+}
+
+.acciones-formulario {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.acciones-formulario button {
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: #142334;
+  color: #f5f5f5;
+  cursor: pointer;
+}
+
+.acciones-formulario button svg {
+  width: 100%;
+  height: 100%;
+}
+
+#boton-guardar-localidad {
+  background: #4fc3f7;
+  color: #001622;
+}
+
+#boton-eliminar-localidad {
+  background: #4a1c1c;
+  color: #ffb3b3;
+  margin-right: auto;
+}
+
+.mensaje-acceso {
+  max-width: 480px;
+  margin: 3rem auto;
+  text-align: center;
+  color: #9db4c9;
+  padding: 0 1.5rem;
+}

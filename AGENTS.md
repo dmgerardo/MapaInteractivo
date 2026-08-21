@@ -275,6 +275,41 @@ mapa para siempre). Corre una vez al día.
 proyecto de Firebase, aunque el uso real quede dentro de la capa gratuita — Spark
 (el plan default) no permite Cloud Scheduler. Sin esto, el deploy falla.
 
+## 8.2 Capas con captura manual (escritura desde el navegador)
+
+Decidido 2026-08-21, primera capa de este tipo: **`misLocalidades`**
+(`mantenimiento.html` + `js/mantenimiento.js`). A diferencia de los agentes (Sección
+8.1), acá **una persona** captura los datos desde el navegador — por eso sí necesita
+autenticación real, distinto del resto de la app que es de solo lectura.
+
+- **Autenticación: Google Sign-In** (`js/auth.js`), solo en páginas de
+  mantenimiento — `index.html` (el mapa público) no la importa ni la necesita.
+- **Autorización por lista de correos**, no por rol en la base de datos: el mismo
+  correo literal aparece en **tres lugares** que hay que mantener sincronizados al
+  agregar un administrador nuevo:
+  1. `database.rules.json` → `.write` de `capas/misLocalidades` y
+     `eventos/misLocalidades` (`auth.token.email == '...'`)
+  2. `storage.rules` → mismo patrón para `/localidades/**`
+  3. `js/auth.js` → `ADMINS_AUTORIZADOS` (solo controla qué botones se muestran en
+     la UI; la protección real vive en las reglas de los puntos 1 y 2, no aquí)
+- **Modelo de datos**: mismo esquema genérico de `/eventos/{capaId}/{eventoId}`
+  (Sección 8) más dos campos propios de esta capa: `nivelRiesgo` (number) y
+  `fotoUrl` (string — URL de Firebase Storage o una URL externa pegada a mano,
+  ambas se validan con `urlSegura()` al mostrarse, igual que `fuenteUrl`).
+- **Fotos → Firebase Storage**, carpeta `localidades/{nombreArchivo}` (nombre
+  generado con `crypto.randomUUID()`, nunca el nombre original del archivo). Límite
+  8 MB y `contentType` debe empezar con `image/`, exigido tanto en `storage.rules`
+  como en `js/storage.js` (dos capas de la misma validación: la del cliente es solo
+  UX, la de las reglas es la que realmente protege). Lectura pública (igual que
+  `capas`/`eventos`), escritura solo para los correos autorizados.
+- El botón "+" de foto ofrece tres orígenes (subir archivo, pegar del portapapeles
+  vía `navigator.clipboard.read()`, o pegar una URL ya existente) — los primeros
+  dos suben a Storage, el tercero solo guarda el link tal cual.
+- La propia página de mantenimiento crea/actualiza `/capas/misLocalidades` (nombre,
+  color, activa) la primera vez que una sesión de administrador carga — mismo
+  patrón de auto-inicialización que usan los agentes en `/capas/{capaId}`, para no
+  depender de un seed manual en Firebase Console.
+
 ## 9. Documentación viva
 
 - **`AGENTS.md`** (con `CLAUDE.md` apuntando a él en una línea) es la fuente de

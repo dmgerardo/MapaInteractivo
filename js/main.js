@@ -1,8 +1,8 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=4';
+import { suscribir } from './db.js?v=5';
 import { esc, urlSegura } from './utilidades.js?v=4';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=2';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=4';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -10,6 +10,9 @@ const panelInfoContenido = document.getElementById('panel-info-contenido');
 const botonCerrarPanel = document.getElementById('cerrar-panel-info');
 const botonMenuCapas = document.getElementById('boton-menu-capas');
 const listaCapas = document.getElementById('lista-capas');
+const enlaceMantenimiento = document.getElementById('enlace-mantenimiento');
+
+enlaceMantenimiento.innerHTML = ICONOS.ajustes;
 
 botonCerrarPanel.innerHTML = ICONOS.cerrar;
 botonCerrarPanel.addEventListener('click', () => panelInfo.classList.add('oculto'));
@@ -114,13 +117,16 @@ function renderizarMenuCapas() {
 
 function mostrarPanelEvento(punto) {
   const fuenteHref = punto.fuenteUrl ? urlSegura(punto.fuenteUrl) : null;
+  const fotoHref = punto.fotoUrl ? urlSegura(punto.fotoUrl) : null;
   const fecha = punto.fechaUTC ? formateadorFecha.format(new Date(punto.fechaUTC)) : null;
   panelInfoContenido.innerHTML = `
+    ${fotoHref ? `<img class="foto-evento" src="${esc(fotoHref)}" alt="" />` : ''}
     <h2>${esc(punto.titulo)}</h2>
     ${punto.categoria ? `<p class="meta">${esc(punto.categoria)}</p>` : ''}
     ${fecha ? `<p>${esc(fecha)}</p>` : ''}
     ${punto.descripcion ? `<p>${esc(punto.descripcion)}</p>` : ''}
-    ${fuenteHref ? `<p><a href="${esc(fuenteHref)}" target="_blank" rel="noopener noreferrer">Ver noticia</a></p>` : ''}
+    ${typeof punto.nivelRiesgo === 'number' ? `<p>Nivel de riesgo: ${esc(punto.nivelRiesgo)}</p>` : ''}
+    ${fuenteHref ? `<p><a href="${esc(fuenteHref)}" target="_blank" rel="noopener noreferrer">Ver enlace</a></p>` : ''}
   `;
   panelInfo.classList.remove('oculto');
 }

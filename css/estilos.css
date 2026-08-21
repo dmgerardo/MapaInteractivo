@@ -30,6 +30,26 @@ html, body {
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
+#enlace-mantenimiento {
+  position: absolute;
+  top: 0.75rem;
+  right: 1.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  color: #f5f5f5;
+  opacity: 0.7;
+  pointer-events: auto;
+}
+
+#enlace-mantenimiento:hover {
+  opacity: 1;
+}
+
+#enlace-mantenimiento svg {
+  width: 100%;
+  height: 100%;
+}
+
 #contenedor-globo {
   position: fixed;
   inset: 0;
@@ -77,6 +97,14 @@ html, body {
 #cerrar-panel-info svg {
   width: 100%;
   height: 100%;
+}
+
+#panel-info .foto-evento {
+  width: 100%;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
 }
 
 #panel-info h2 {

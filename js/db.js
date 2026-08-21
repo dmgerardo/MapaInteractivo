@@ -1,7 +1,7 @@
 // Capa de acceso a datos centralizada — ninguna vista debe llamar a
 // ref.set()/ref.update() directo. Ver AGENTS.md sección 2.
 import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=4';
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
   getDatabase, ref, push, set, update, remove, onValue, off,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
@@ -13,7 +13,7 @@ let db = null;
 // tumba toda la página, incluyendo el globo. Por eso el init queda condicionado a
 // CONFIGURADO y el resto de la app sigue funcionando (sin persistencia) mientras tanto.
 if (CONFIGURADO) {
-  const app = initializeApp(firebaseConfig);
+  const app = getApps()[0] || initializeApp(firebaseConfig);
   db = getDatabase(app);
 } else {
   console.warn('Firebase no está configurado todavía (js/firebase-config.js). La app funciona sin persistencia.');

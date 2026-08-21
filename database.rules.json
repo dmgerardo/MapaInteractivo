@@ -4,11 +4,17 @@
     ".write": false,
     "capas": {
       ".read": true,
-      ".write": false
+      ".write": false,
+      "misLocalidades": {
+        ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
+      }
     },
     "eventos": {
       ".read": true,
-      ".write": false
+      ".write": false,
+      "misLocalidades": {
+        ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
+      }
     }
   }
 }

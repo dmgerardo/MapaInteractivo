@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mantenimiento — Mis Localidades</title>
+  <link rel="stylesheet" href="css/estilos.css?v=7" />
+  <link rel="stylesheet" href="css/mantenimiento.css?v=1" />
+</head>
+<body class="pagina-mantenimiento">
+  <header id="encabezado-mantenimiento">
+    <h1>Mis Localidades</h1>
+    <a href="index.html" class="enlace-volver">← Volver al mapa</a>
+    <div id="zona-sesion"></div>
+  </header>
+
+  <main id="contenido-mantenimiento">
+    <div id="barra-acciones">
+      <button id="boton-agregar" type="button" class="oculto">
+        <span class="icono-inline"></span> Agregar localidad
+      </button>
+    </div>
+    <div id="lista-localidades"></div>
+  </main>
+
+  <div id="fondo-modal" class="oculto"></div>
+  <div id="modal-localidad" class="oculto" role="dialog" aria-modal="true">
+    <form id="form-localidad">
+      <h2 id="titulo-modal">Agregar localidad</h2>
+
+      <label for="campo-nombre">Nombre</label>
+      <input id="campo-nombre" name="nombre" type="text" required maxlength="120" />
+
+      <div class="fila-dos-columnas">
+        <div>
+          <label for="campo-lat">Latitud</label>
+          <input id="campo-lat" name="lat" type="number" step="any" min="-90" max="90" required />
+        </div>
+        <div>
+          <label for="campo-lon">Longitud</label>
+          <input id="campo-lon" name="lon" type="number" step="any" min="-180" max="180" required />
+        </div>
+      </div>
+
+      <label for="campo-comentarios">Comentarios</label>
+      <textarea id="campo-comentarios" name="comentarios" rows="3" maxlength="2000"></textarea>
+
+      <label for="campo-riesgo">Nivel de riesgo</label>
+      <input id="campo-riesgo" name="nivelRiesgo" type="number" min="1" max="10" step="1" />
+
+      <label for="campo-liga">Liga</label>
+      <input id="campo-liga" name="liga" type="url" placeholder="https://…" maxlength="500" />
+
+      <label>Fotografía</label>
+      <div id="campo-foto"></div>
+      <input id="entrada-archivo-foto" type="file" accept="image/*" class="oculto" />
+
+      <div class="acciones-formulario">
+        <button type="button" id="boton-eliminar-localidad" class="oculto" aria-label="Eliminar" title="Eliminar"></button>
+        <button type="button" id="boton-cancelar-localidad" aria-label="Cancelar" title="Cancelar"></button>
+        <button type="submit" id="boton-guardar-localidad" aria-label="Guardar" title="Guardar"></button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module" src="js/mantenimiento.js?v=1"></script>
+</body>
+</html>
