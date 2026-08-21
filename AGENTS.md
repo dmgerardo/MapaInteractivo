@@ -122,6 +122,28 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   descrito arriba: ocultar una capa la agrega a `capasOcultasPorUsuario` en
   `js/main.js`, es estado de sesión (no se guarda en Firebase, el cliente no tiene
   permiso de escritura ahí — ver Sección 8).
+- **Menú de vista del mapa** (`#menu-vista`, abajo a la derecha, `js/main.js`):
+  tres modos — `satelite` (default), `satelite-fronteras` (misma imagen satelital +
+  contorno de países) y `fronteras` (mapa político plano, sin satélite, al estilo
+  Google Maps). Los contornos vienen de un GeoJSON público de Natural Earth
+  (`//unpkg.com/three-globe/example/country-polygons/ne_110m_admin_0_countries.geojson`,
+  ~480 KB) que se descarga **una sola vez, perezosamente** (`obtenerPaises()`, solo
+  al elegir un modo con fronteras por primera vez) y se cachea en memoria — nunca en
+  `satelite` puro. El color de océano plano del modo `fronteras` se genera con un
+  `<canvas>` de 2×2px en tiempo de ejecución (`generarColorPlano()`), no es un
+  archivo de imagen — evita depender de un asset extra solo para un color sólido.
+  Usa las capas `polygonsData`/`polygonCapColor`/`polygonStrokeColor` de globe.gl,
+  no `htmlElementsData` (esa es para los marcadores de eventos).
+- **Reporte de elementos en vista** (`#panel-reporte`, botón junto al de capas,
+  `js/main.js`): lista en vivo de los eventos que caen en el **hemisferio visible**
+  respecto a la cámara actual — mismo criterio de "cerca/lejos de la cámara" que
+  usa three-globe internamente para mostrar/ocultar marcadores (distancia angular
+  < 90°, `enHemisferioVisible()`), calculado con la posición de cámara que entrega
+  `.onZoom()` en cada rotación/zoom. La lista solo se recalcula mientras el panel
+  está abierto (`panelReporte` sin la clase `oculto`), para no gastar trabajo de
+  render en cada frame de rotación cuando nadie la está viendo. Clic en una fila
+  llama `globo.pointOfView({ lat, lng }, 1000)` para centrar la cámara ahí, sin
+  tocar la altitude actual (mantiene el zoom del usuario).
 
 ## 4. Seguridad — no negociable
 

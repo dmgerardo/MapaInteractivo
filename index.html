@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mapa Interactivo</title>
-  <link rel="stylesheet" href="css/estilos.css?v=8" />
+  <link rel="stylesheet" href="css/estilos.css?v=9" />
 </head>
 <body>
   <header id="encabezado">
@@ -27,10 +27,23 @@
     <div id="lista-capas" class="oculto"></div>
   </div>
 
+  <div id="menu-vista">
+    <button id="boton-menu-vista" type="button" aria-label="Vista del mapa" title="Vista del mapa" aria-expanded="false"></button>
+    <div id="lista-vistas" class="oculto"></div>
+  </div>
+
+  <button id="boton-reporte" type="button" aria-label="Reporte" title="Reporte" aria-expanded="false"></button>
+
+  <aside id="panel-reporte" class="oculto" aria-live="polite">
+    <button id="cerrar-panel-reporte" type="button" aria-label="Cerrar" title="Cerrar"></button>
+    <h2>En vista</h2>
+    <div id="lista-reporte"></div>
+  </aside>
+
   <!-- globe.gl: versión vanilla (sin React) de la misma librería de vasturiano/react-globe.gl -->
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
 
   <!-- main.js importa db.js (que a su vez importa firebase-config.js), utilidades.js e iconos.js -->
-  <script type="module" src="js/main.js?v=9"></script>
+  <script type="module" src="js/main.js?v=10"></script>
 </body>
 </html>
