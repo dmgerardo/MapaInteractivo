@@ -7,12 +7,18 @@
       ".write": false,
       "misLocalidades": {
         ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
+      },
+      "misVecinos": {
+        ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
       }
     },
     "eventos": {
       ".read": true,
       ".write": false,
       "misLocalidades": {
+        ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
+      },
+      "misVecinos": {
         ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
       }
     }

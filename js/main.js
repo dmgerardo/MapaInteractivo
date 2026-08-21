@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=5';
-import { esc, urlSegura } from './utilidades.js?v=4';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=6';
-import { APP_VERSION } from './version.js?v=1';
+import { suscribir } from './db.js?v=2';
+import { esc, urlSegura } from './utilidades.js?v=2';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=2';
+import { APP_VERSION } from './version.js?v=2';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');

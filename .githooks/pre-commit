@@ -1,0 +1,29 @@
+#!/bin/sh
+# Sube APP_VERSION y sincroniza todos los ?v=N de cache-busting cuando el commit
+# toca .css o .js. Ver AGENTS.md sección 6.
+#
+# Actívalo una vez por clon (git no lo hace solo sin un gestor de paquetes de por
+# medio):
+#   git config core.hooksPath .githooks
+
+set -e
+
+CAMBIOS=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(css|js)$' || true)
+if [ -z "$CAMBIOS" ]; then
+  exit 0
+fi
+
+VERSION_FILE="js/version.js"
+ACTUAL=$(grep -oE "APP_VERSION = [0-9]+" "$VERSION_FILE" | grep -oE "[0-9]+")
+NUEVA=$((ACTUAL + 1))
+
+sed -i -E "s/APP_VERSION = [0-9]+/APP_VERSION = $NUEVA/" "$VERSION_FILE"
+
+for archivo in index.html mantenimiento.html js/*.js; do
+  [ -f "$archivo" ] || continue
+  sed -i -E "s/\?v=[0-9]+/?v=$NUEVA/g" "$archivo"
+done
+
+git add "$VERSION_FILE" index.html mantenimiento.html js/*.js
+
+echo "pre-commit: versión subida a v$NUEVA (cache-busting sincronizado en todos los ?v=)."

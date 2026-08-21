@@ -1,5 +1,4 @@
-// Número de versión visible en la UI — súbelo manualmente en cada cambio de
-// .css/.js relevante para el usuario final (junto con el cache-busting ?v=N de los
-// <script>/<link> y la entrada nueva en historial.html cuando exista). Ver AGENTS.md
-// sección 6.
-export const APP_VERSION = 1;
+// Número de versión visible en la UI — lo sube automáticamente el hook de
+// pre-commit (.githooks/pre-commit) cuando el commit toca algún .css/.js, junto con
+// todos los ?v=N de cache-busting. No lo edites a mano. Ver AGENTS.md sección 6.
+export const APP_VERSION = 2;

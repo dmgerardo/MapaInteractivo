@@ -2,11 +2,15 @@
 
 ## Estado actual (2026-08-21)
 
-- **Escritura desde el navegador ahora existe** (capa `misLocalidades`,
-  `mantenimiento.html`), protegida por Firebase Auth (Google) + lista de correos
-  autorizados en las reglas — ver Fase 2 abajo y `AGENTS.md` sección 8.2. El resto
-  de la app (`index.html`, cualquier capa poblada por un agente) sigue siendo
-  estrictamente de solo lectura para el cliente.
+- **Escritura desde el navegador ahora existe** (capas `misLocalidades` y
+  `misVecinos`, mismo `mantenimiento.html`), protegida por Firebase Auth (Google) +
+  lista de correos autorizados en las reglas — ver Fase 2 abajo y `AGENTS.md`
+  sección 8.2. El resto de la app (`index.html`, cualquier capa poblada por un
+  agente) sigue siendo estrictamente de solo lectura para el cliente. Cada capa
+  manual nueva agrega su propia entrada `.write` en `database.rules.json` (no hay
+  regla "genérica" que cubra capas futuras sin tocar el archivo) — la carga masiva
+  por CSV usa las mismas reglas, escribe fila por fila con las funciones normales de
+  `db.js`, no hay ningún camino de escritura que las salte.
 
 - **Realtime Database bloqueada por default en la raíz**: `database.rules.json`
   tiene `.read: false` / `.write: false` en la raíz. Los nodos `capas` y `eventos`
@@ -42,10 +46,13 @@
    tres lugares que hay que mantener sincronizados en `AGENTS.md` sección 8.2.
    Las escrituras de los agentes vía Admin SDK nunca dependieron de esta fase.
 3. ✅ **Fase 3 — hecha (2026-08-21)**: `storage.rules` agregado junto con Firebase
-   Storage para las fotos de `misLocalidades` — mismo criterio de raíz bloqueada
-   por default (`allPaths=**` con `read`/`write` en `false`), solo `/localidades/**`
-   tiene reglas explícitas (lectura pública, escritura solo para los correos
-   autorizados, límite de 8 MB y `image/*` obligatorio).
+   Storage para las fotos de las capas manuales — mismo criterio de raíz bloqueada
+   por default (`allPaths=**` con `read`/`write` en `false`), solo
+   `/capas-manuales/**` tiene reglas explícitas (lectura pública, escritura solo
+   para los correos autorizados, límite de 8 MB y `image/*` obligatorio). La
+   carpeta vieja `/localidades/**` (de antes de que existiera `misVecinos`) quedó
+   de solo lectura, sin escritura nueva permitida — evita que quede una ruta de
+   subida olvidada sin límite de tamaño/tipo si algún día se vuelve a tocar.
 4. ✅ **Fase 4 — hecha (2026-08-20)**: primer agente real (`eventosGeologicos`,
    `functions/index.js`) corre como **Firebase Cloud Function programada** (2nd
    gen, `onSchedule`, una vez al día) dentro del mismo proyecto `globo-01`. Su

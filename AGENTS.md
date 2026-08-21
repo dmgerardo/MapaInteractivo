@@ -183,11 +183,15 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   rondas viejas ya mergeadas sobre la misma rama de trabajo.
 - Cada commit es atómico y su mensaje explica el **porqué**, no el qué (el diff ya
   dice el qué).
-- **Hook de pre-commit** que sube automáticamente un número de versión
-  (`?v=N` de cache-busting en los `<script>`/`<link>` + una constante `APP_VERSION`)
-  cuando el commit toca `.css`/`.js` — actívalo una vez por clon con
+- **Hook de pre-commit** (`.githooks/pre-commit`, implementado 2026-08-21) que sube
+  automáticamente un número de versión único y lo sincroniza en **todos** los `?v=N`
+  de cache-busting (`index.html`, `mantenimiento.html`, los `import` entre módulos
+  en `js/*.js`) más la constante `APP_VERSION` (`js/version.js`, se muestra junto al
+  título en el mapa) — cuando el commit toca algún `.css`/`.js`. Un solo número
+  global, no un contador independiente por archivo. Actívalo una vez por clon con
   `git config core.hooksPath .githooks`, porque git no lo hace solo sin un gestor de
-  paquetes de por medio.
+  paquetes de por medio — **sin ese paso el número de versión nunca sube**, aunque
+  el resto de la app se despliegue bien.
 - **Changelog visible dentro de la propia app** (`historial.html` o equivalente), con
   una entrada nueva por cada bump de versión — **en el mismo PR que sube la
   versión**, nunca dejado para después. Tono para el usuario final (qué cambia para
@@ -299,45 +303,73 @@ proyecto de Firebase, aunque el uso real quede dentro de la capa gratuita — Sp
 
 ## 8.2 Capas con captura manual (escritura desde el navegador)
 
-Decidido 2026-08-21, primera capa de este tipo: **`misLocalidades`**
-(`mantenimiento.html` + `js/mantenimiento.js`). A diferencia de los agentes (Sección
-8.1), acá **una persona** captura los datos desde el navegador — por eso sí necesita
-autenticación real, distinto del resto de la app que es de solo lectura.
+`mantenimiento.html` + `js/mantenimiento.js` administran **todas** las capas de
+este tipo — no es una página por capa. Capas actuales: **`misLocalidades`** y
+**`misVecinos`** (2026-08-21, mismo comportamiento exacto, solo cambian nombre,
+color y `categoria`). A diferencia de los agentes (Sección 8.1), acá **una
+persona** captura los datos desde el navegador — por eso sí necesita autenticación
+real, distinto del resto de la app que es de solo lectura.
 
+- **Agregar una capa manual nueva** = un objeto más en el array `CAPAS` al inicio
+  de `js/mantenimiento.js` (`id`, `nombre`, `nombreSingular`, `categoria`, `color`,
+  `descripcion`) — aparece sola como pestaña nueva, con el mismo formulario, la
+  misma carga masiva y el mismo ícono-por-categoría en el mapa (agregar la entrada
+  correspondiente en `ICONOS_EVENTO`, `js/iconos.js`). También hay que agregar su
+  entrada de `.write` en `database.rules.json` (ver el punto de abajo) — eso sí es
+  manual, las reglas no pueden generarse solas desde una lista en el cliente.
 - **Autenticación: Google Sign-In** (`js/auth.js`), solo en páginas de
   mantenimiento — `index.html` (el mapa público) no la importa ni la necesita.
 - **Autorización por lista de correos**, no por rol en la base de datos: el mismo
   correo literal aparece en **tres lugares** que hay que mantener sincronizados al
-  agregar un administrador nuevo:
-  1. `database.rules.json` → `.write` de `capas/misLocalidades` y
-     `eventos/misLocalidades` (`auth.token.email == '...'`)
-  2. `storage.rules` → mismo patrón para `/localidades/**`
+  agregar un administrador nuevo (y una entrada más por cada capa manual en los dos
+  primeros):
+  1. `database.rules.json` → `.write` de `capas/{capaId}` y `eventos/{capaId}` por
+     cada capa manual (`auth.token.email == '...'`)
+  2. `storage.rules` → mismo patrón para `/capas-manuales/**` (carpeta compartida
+     por todas las capas manuales, no una por capa — ver el punto de fotos)
   3. `js/auth.js` → `ADMINS_AUTORIZADOS` (solo controla qué botones se muestran en
      la UI; la protección real vive en las reglas de los puntos 1 y 2, no aquí)
 - **Modelo de datos**: mismo esquema genérico de `/eventos/{capaId}/{eventoId}`
-  (Sección 8) más dos campos propios de esta capa: `nivelRiesgo` (number) y
+  (Sección 8) más dos campos propios de estas capas: `nivelRiesgo` (number) y
   `fotoUrl` (string — URL de Firebase Storage o una URL externa pegada a mano,
   ambas se validan con `urlSegura()` al mostrarse, igual que `fuenteUrl`).
-- **Fotos → Firebase Storage**, carpeta `localidades/{nombreArchivo}` (nombre
-  generado con `crypto.randomUUID()`, nunca el nombre original del archivo). Límite
-  8 MB y `contentType` debe empezar con `image/`, exigido tanto en `storage.rules`
-  como en `js/storage.js` (dos capas de la misma validación: la del cliente es solo
-  UX, la de las reglas es la que realmente protege). Lectura pública (igual que
-  `capas`/`eventos`), escritura solo para los correos autorizados.
+- **Fotos → Firebase Storage**, carpeta compartida `capas-manuales/{nombreArchivo}`
+  para todas las capas manuales (nombre generado con `crypto.randomUUID()`, nunca
+  el nombre original del archivo — así no colisionan aunque sean de capas
+  distintas). La carpeta vieja `localidades/` (de antes de `misVecinos`) se dejó de
+  usar para subir, pero sigue de solo lectura en `storage.rules` para no romper
+  fotos ya subidas ahí. Límite 8 MB y `contentType` debe empezar con `image/`,
+  exigido tanto en `storage.rules` como en `js/storage.js` (dos capas de la misma
+  validación: la del cliente es solo UX, la de las reglas es la que realmente
+  protege). Lectura pública (igual que `capas`/`eventos`), escritura solo para los
+  correos autorizados.
 - El botón "+" de foto ofrece tres orígenes (subir archivo, pegar del portapapeles
   vía `navigator.clipboard.read()`, o pegar una URL ya existente) — los primeros
   dos suben a Storage, el tercero solo guarda el link tal cual.
-- La propia página de mantenimiento crea/actualiza `/capas/misLocalidades` (nombre,
-  color, activa) la primera vez que una sesión de administrador carga — mismo
-  patrón de auto-inicialización que usan los agentes en `/capas/{capaId}`, para no
-  depender de un seed manual en Firebase Console.
+- **Carga masiva por CSV** (`procesarCSV()`): botón "Subir CSV" junto a "Agregar",
+  más un link de "Plantilla CSV" que descarga un ejemplo con las columnas
+  esperadas: `nombre,lat,lon,comentarios,nivelRiesgo,liga,fotoUrl` (solo
+  `nombre`/`lat`/`lon` son obligatorias; el resto pueden ir vacías o la columna
+  completa puede faltar). El parser (`analizarCSV()`) es propio, sin librería —
+  soporta campos entre comillas con comas y comillas escapadas (`""`), que es lo
+  que exportan Excel/Google Sheets por default. Cada fila se sube con `agregar()`
+  una por una (no en lote) para poder reportar en qué fila exacta falló cada error,
+  y al final se muestra un resumen de agregados vs. errores. La foto en modo masivo
+  solo acepta URL (columna `fotoUrl`) — no hay forma de subir archivos binarios
+  desde un CSV, así que ese campo usa el mismo origen "URL" del formulario
+  individual, nunca sube a Storage por esta vía.
+- La propia página de mantenimiento crea/actualiza `/capas/{capaId}` (nombre,
+  color, activa) la primera vez que una sesión de administrador carga esa pestaña —
+  mismo patrón de auto-inicialización que usan los agentes en `/capas/{capaId}`,
+  para no depender de un seed manual en Firebase Console.
 - **`mantenimiento.html` no muestra nada de su contenido (ni la lista, de solo
   lectura) hasta resolver la sesión** — pantalla de acceso a página completa
   (`#pantalla-acceso`) con tres estados: sin sesión (botón de Google bien visible,
   no un link chico en la esquina), sesión de un correo no autorizado (mensaje +
   botón para cerrar esa sesión y probar con otro correo), o admin válido (se oculta
-  la pantalla de acceso, aparece el contenido real). Decidido así porque el link de
-  "Iniciar sesión" en la esquina pasaba fácilmente desapercibido.
+  la pantalla de acceso, aparece el contenido real, incluidas las pestañas de
+  capas). Decidido así porque el link de "Iniciar sesión" en la esquina pasaba
+  fácilmente desapercibido.
 
 ## 9. Documentación viva
 

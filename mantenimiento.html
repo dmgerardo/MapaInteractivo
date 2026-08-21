@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mantenimiento — Mis Localidades</title>
-  <link rel="stylesheet" href="css/estilos.css?v=7" />
+  <title>Mantenimiento</title>
+  <link rel="stylesheet" href="css/estilos.css?v=2" />
   <link rel="stylesheet" href="css/mantenimiento.css?v=2" />
 </head>
 <body class="pagina-mantenimiento">
   <header id="encabezado-mantenimiento">
-    <h1>Mis Localidades</h1>
+    <h1 id="titulo-pagina">Mantenimiento</h1>
     <a href="index.html" class="enlace-volver">← Volver al mapa</a>
     <div id="zona-sesion"></div>
   </header>
+
+  <div id="pestanas-capas" class="oculto"></div>
 
   <div id="pantalla-acceso" class="oculto">
     <div class="tarjeta-acceso">
@@ -25,10 +27,18 @@
 
   <main id="contenido-mantenimiento" class="oculto">
     <div id="barra-acciones">
+      <a id="enlace-plantilla-csv" download="plantilla.csv" title="Descargar plantilla CSV">
+        <span class="icono-inline"></span> Plantilla CSV
+      </a>
+      <button id="boton-subir-csv" type="button">
+        <span class="icono-inline"></span> Subir CSV
+      </button>
+      <input id="entrada-archivo-csv" type="file" accept=".csv,text/csv" class="oculto" />
       <button id="boton-agregar" type="button" class="oculto">
-        <span class="icono-inline"></span> Agregar localidad
+        <span class="icono-inline"></span> Agregar
       </button>
     </div>
+    <div id="resultado-csv" class="oculto"></div>
     <div id="lista-localidades"></div>
   </main>
 
@@ -72,6 +82,6 @@
     </form>
   </div>
 
-  <script type="module" src="js/mantenimiento.js?v=3"></script>
+  <script type="module" src="js/mantenimiento.js?v=2"></script>
 </body>
 </html>

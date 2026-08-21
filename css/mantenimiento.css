@@ -52,6 +52,36 @@ body.pagina-mantenimiento {
   height: 16px;
 }
 
+#pestanas-capas {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem 0;
+}
+
+#pestanas-capas.oculto {
+  display: none;
+}
+
+.pestana-capa {
+  padding: 0.5rem 0.9rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #9db4c9;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pestana-capa:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pestana-capa.activa {
+  color: #f5f5f5;
+  border-bottom-color: #4fc3f7;
+}
+
 #contenido-mantenimiento {
   max-width: 720px;
   margin: 0 auto;
@@ -60,8 +90,29 @@ body.pagina-mantenimiento {
 
 #barra-acciones {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 0.6rem;
   margin-bottom: 1rem;
+}
+
+#enlace-plantilla-csv,
+#boton-subir-csv {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
+  border: none;
+  border-radius: 8px;
+  background: #142334;
+  color: #f5f5f5;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+#enlace-plantilla-csv:hover,
+#boton-subir-csv:hover {
+  background: #1c2b3a;
 }
 
 #boton-agregar {
@@ -75,12 +126,33 @@ body.pagina-mantenimiento {
   color: #001622;
   font-weight: 600;
   cursor: pointer;
+  margin-left: auto;
 }
 
-#boton-agregar .icono-inline svg {
+#boton-agregar .icono-inline svg,
+#enlace-plantilla-csv .icono-inline svg,
+#boton-subir-csv .icono-inline svg {
   width: 16px;
   height: 16px;
   display: block;
+}
+
+#resultado-csv {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #0a1622;
+  font-size: 0.85rem;
+}
+
+#resultado-csv.oculto {
+  display: none;
+}
+
+#resultado-csv ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  color: #9db4c9;
 }
 
 .fila-localidad {
