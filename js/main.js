@@ -2,7 +2,7 @@
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
 import { suscribir } from './db.js?v=5';
 import { esc, urlSegura } from './utilidades.js?v=4';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=4';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=5';
 import { APP_VERSION } from './version.js?v=1';
 
 const contenedor = document.getElementById('contenedor-globo');

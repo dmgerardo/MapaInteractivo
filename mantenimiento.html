@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mantenimiento — Mis Localidades</title>
   <link rel="stylesheet" href="css/estilos.css?v=7" />
-  <link rel="stylesheet" href="css/mantenimiento.css?v=1" />
+  <link rel="stylesheet" href="css/mantenimiento.css?v=2" />
 </head>
 <body class="pagina-mantenimiento">
   <header id="encabezado-mantenimiento">
@@ -14,7 +14,16 @@
     <div id="zona-sesion"></div>
   </header>
 
-  <main id="contenido-mantenimiento">
+  <div id="pantalla-acceso" class="oculto">
+    <div class="tarjeta-acceso">
+      <span class="icono-candado"></span>
+      <h2 id="titulo-acceso">Inicia sesión para continuar</h2>
+      <p id="mensaje-acceso">Esta página es solo para administrar las localidades del mapa.</p>
+      <button id="boton-acceso" type="button"></button>
+    </div>
+  </div>
+
+  <main id="contenido-mantenimiento" class="oculto">
     <div id="barra-acciones">
       <button id="boton-agregar" type="button" class="oculto">
         <span class="icono-inline"></span> Agregar localidad
@@ -63,6 +72,6 @@
     </form>
   </div>
 
-  <script type="module" src="js/mantenimiento.js?v=2"></script>
+  <script type="module" src="js/mantenimiento.js?v=3"></script>
 </body>
 </html>

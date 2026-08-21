@@ -309,10 +309,65 @@ body.pagina-mantenimiento {
   margin-right: auto;
 }
 
-.mensaje-acceso {
-  max-width: 480px;
-  margin: 3rem auto;
+#pantalla-acceso {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 4.5rem);
+  padding: 1.5rem;
+}
+
+#pantalla-acceso.oculto {
+  display: none;
+}
+
+.tarjeta-acceso {
+  max-width: 360px;
   text-align: center;
+}
+
+.icono-candado {
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
   color: #9db4c9;
-  padding: 0 1.5rem;
+}
+
+.icono-candado svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tarjeta-acceso h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.tarjeta-acceso p {
+  margin: 0 0 1.25rem;
+  color: #9db4c9;
+  font-size: 0.9rem;
+}
+
+#boton-acceso {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #4fc3f7;
+  color: #001622;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#boton-acceso svg {
+  width: 18px;
+  height: 18px;
+}
+
+#contenido-mantenimiento.oculto {
+  display: none;
 }

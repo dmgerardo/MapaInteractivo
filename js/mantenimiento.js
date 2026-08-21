@@ -3,7 +3,7 @@
 // sección 8.2 y database.rules.json).
 import { agregar, actualizar, eliminar, suscribir } from './db.js?v=5';
 import { esc, urlSegura } from './utilidades.js?v=4';
-import { ICONOS } from './iconos.js?v=4';
+import { ICONOS } from './iconos.js?v=5';
 import {
   iniciarSesionGoogle, cerrarSesion, onCambioSesion, esAdmin,
 } from './auth.js?v=1';
@@ -12,6 +12,12 @@ import { subirFoto } from './storage.js?v=1';
 const CAPA_ID = 'misLocalidades';
 
 const zonaSesion = document.getElementById('zona-sesion');
+const pantallaAcceso = document.getElementById('pantalla-acceso');
+const contenidoMantenimiento = document.getElementById('contenido-mantenimiento');
+const iconoCandado = document.querySelector('.icono-candado');
+const tituloAcceso = document.getElementById('titulo-acceso');
+const mensajeAcceso = document.getElementById('mensaje-acceso');
+const botonAcceso = document.getElementById('boton-acceso');
 const botonAgregar = document.getElementById('boton-agregar');
 const listaLocalidades = document.getElementById('lista-localidades');
 
@@ -29,15 +35,37 @@ botonAgregar.querySelector('.icono-inline').innerHTML = ICONOS.agregar;
 botonCancelar.innerHTML = ICONOS.cerrar;
 botonGuardar.innerHTML = ICONOS.guardar;
 botonEliminar.innerHTML = ICONOS.eliminar;
+iconoCandado.innerHTML = ICONOS.candado;
 
 let usuarioActual = null;
 let localidades = {};
 let idEnEdicion = null;
 let fotoUrlActual = null;
 
+// Nada de la vista (ni siquiera la lista) se muestra hasta que quede claro si hay
+// sesión o no — antes el botón de "Iniciar sesión" vivía solo en la esquina y era
+// fácil no verlo y asumir que ya se tenía sesión iniciada.
+function renderPantallaAcceso() {
+  const admin = esAdmin(usuarioActual);
+  pantallaAcceso.classList.toggle('oculto', admin);
+  contenidoMantenimiento.classList.toggle('oculto', !admin);
+
+  if (!usuarioActual) {
+    tituloAcceso.textContent = 'Inicia sesión para continuar';
+    mensajeAcceso.textContent = 'Esta página es solo para administrar las localidades del mapa.';
+    botonAcceso.innerHTML = `${ICONOS.iniciarSesion} Iniciar sesión con Google`;
+    botonAcceso.onclick = iniciarSesionGoogle;
+  } else if (!admin) {
+    tituloAcceso.textContent = 'Sin permiso de administrador';
+    mensajeAcceso.textContent = `La sesión ${usuarioActual.email} no tiene permiso para administrar localidades.`;
+    botonAcceso.innerHTML = `${ICONOS.cerrarSesion} Cerrar sesión`;
+    botonAcceso.onclick = cerrarSesion;
+  }
+}
+
 function renderZonaSesion() {
   zonaSesion.innerHTML = '';
-  if (usuarioActual) {
+  if (esAdmin(usuarioActual)) {
     const nombre = document.createElement('span');
     nombre.textContent = usuarioActual.email;
     const boton = document.createElement('button');
@@ -45,12 +73,6 @@ function renderZonaSesion() {
     boton.innerHTML = `${ICONOS.cerrarSesion} Cerrar sesión`;
     boton.addEventListener('click', cerrarSesion);
     zonaSesion.append(nombre, boton);
-  } else {
-    const boton = document.createElement('button');
-    boton.type = 'button';
-    boton.innerHTML = `${ICONOS.iniciarSesion} Iniciar sesión con Google`;
-    boton.addEventListener('click', iniciarSesionGoogle);
-    zonaSesion.appendChild(boton);
   }
   botonAgregar.classList.toggle('oculto', !esAdmin(usuarioActual));
 }
@@ -216,31 +238,19 @@ form.addEventListener('submit', async (ev) => {
 });
 
 async function asegurarCapa() {
-  try {
-    await actualizar(`capas/${CAPA_ID}`, {
-      nombre: 'Mis Localidades',
-      descripcion: 'Localidades registradas manualmente',
-      color: '#8e44ad',
-      activa: true,
-    });
-  } catch (error) {
-    console.error('TEMPORAL diagnóstico: asegurarCapa falló:', error.message);
-  }
+  await actualizar(`capas/${CAPA_ID}`, {
+    nombre: 'Mis Localidades',
+    descripcion: 'Localidades registradas manualmente',
+    color: '#8e44ad',
+    activa: true,
+  });
 }
 
-onCambioSesion(async (usuario) => {
+onCambioSesion((usuario) => {
   usuarioActual = usuario;
+  renderPantallaAcceso();
   renderZonaSesion();
   renderizarLista();
-  if (usuario) {
-    // TEMPORAL — diagnóstico de permission_denied, quitar una vez resuelto.
-    const token = await usuario.getIdTokenResult();
-    console.info('TEMPORAL diagnóstico auth:', {
-      email_authUser: usuario.email,
-      email_token: token.claims.email,
-      email_verified: token.claims.email_verified,
-    });
-  }
   if (esAdmin(usuario)) asegurarCapa();
 });
 

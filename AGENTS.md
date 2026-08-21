@@ -309,6 +309,13 @@ autenticación real, distinto del resto de la app que es de solo lectura.
   color, activa) la primera vez que una sesión de administrador carga — mismo
   patrón de auto-inicialización que usan los agentes en `/capas/{capaId}`, para no
   depender de un seed manual en Firebase Console.
+- **`mantenimiento.html` no muestra nada de su contenido (ni la lista, de solo
+  lectura) hasta resolver la sesión** — pantalla de acceso a página completa
+  (`#pantalla-acceso`) con tres estados: sin sesión (botón de Google bien visible,
+  no un link chico en la esquina), sesión de un correo no autorizado (mensaje +
+  botón para cerrar esa sesión y probar con otro correo), o admin válido (se oculta
+  la pantalla de acceso, aparece el contenido real). Decidido así porque el link de
+  "Iniciar sesión" en la esquina pasaba fácilmente desapercibido.
 
 ## 9. Documentación viva
 
