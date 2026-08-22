@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=7';
-import { esc, urlSegura } from './utilidades.js?v=7';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=7';
-import { APP_VERSION } from './version.js?v=7';
+import { suscribir } from './db.js?v=8';
+import { esc, urlSegura } from './utilidades.js?v=8';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=8';
+import { APP_VERSION } from './version.js?v=8';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -49,9 +49,9 @@ botonReporte.innerHTML = ICONOS.reporte;
 botonCerrarReporte.innerHTML = ICONOS.cerrar;
 
 // Altitud de las etiquetas de fronteras: tiene que quedar por encima de la altitud
-// más alta usada por los polígonos (ALTITUD_POLIGONO_FRONTERAS, 0.012 — ver más
-// abajo) o el texto queda "por debajo" de la superficie del país y se ve cortado/
-// tapado por sus paredes laterales (reportado 2026-08-22).
+// más alta usada por los polígonos (ALTITUD_POLIGONO_ESTADOS_FRONTERAS, 0.016 — ver
+// más abajo) o el texto queda "por debajo" de la superficie del país/estado y se ve
+// cortado/tapado por sus paredes laterales (reportado 2026-08-22).
 const ALTITUD_ETIQUETAS = 0.02;
 
 const globo = Globe()(contenedor)
@@ -335,6 +335,15 @@ const UMBRAL_ALTITUD_CIUDADES = 0.4;
 // paredes son transparentes.
 const ALTITUD_POLIGONO_FRONTERAS = 0.012;
 const ALTITUD_POLIGONO_SATELITE_FRONTERAS = 0.001;
+// El polígono de un estado ocupa exactamente la misma área que el país que lo
+// contiene — a la misma altitud que ese país, la superficie coincidente genera
+// z-fighting: el borde estatal "gana" o "pierde" el desempate de forma
+// inconsistente según la geometría exacta de cada país (visto 2026-08-22: se veían
+// los estados de EE.UU. pero no los de México, sin ninguna razón de datos — es la
+// misma familia de bug que las paredes de Brasil, arriba). Por eso el nivel
+// "estado" flota claramente más alto que el "país", nunca a la misma altitud.
+const ALTITUD_POLIGONO_ESTADOS_FRONTERAS = 0.016;
+const ALTITUD_POLIGONO_ESTADOS_SATELITE_FRONTERAS = 0.004;
 
 let nivelDetalleActual = null; // 'pais' | 'estado' | 'ciudad' — evita recalcular en cada tick de zoom
 
@@ -342,6 +351,10 @@ function nivelParaAltitud(altitude) {
   if (altitude < UMBRAL_ALTITUD_CIUDADES) return 'ciudad';
   if (altitude < UMBRAL_ALTITUD_ESTADOS) return 'estado';
   return 'pais';
+}
+
+function altitudPoligono(d, altitudPais, altitudEstado) {
+  return d.nivel === 'estado' ? altitudEstado : altitudPais;
 }
 
 // Color de las etiquetas según el modo de vista activo (lee `vistaActual`, no un
@@ -420,7 +433,7 @@ async function aplicarVista(vista) {
       .polygonCapColor(() => 'rgba(0,0,0,0)')
       .polygonSideColor(() => 'rgba(0,0,0,0)')
       .polygonStrokeColor((d) => (d.nivel === 'estado' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.85)'))
-      .polygonAltitude(ALTITUD_POLIGONO_SATELITE_FRONTERAS);
+      .polygonAltitude((d) => altitudPoligono(d, ALTITUD_POLIGONO_SATELITE_FRONTERAS, ALTITUD_POLIGONO_ESTADOS_SATELITE_FRONTERAS));
   } else if (vista === 'fronteras') {
     globo
       .globeImageUrl(OCEANO_PLANO)
@@ -430,7 +443,7 @@ async function aplicarVista(vista) {
       .polygonCapColor((d) => (d.nivel === 'estado' ? 'rgba(0,0,0,0)' : '#f2efe9'))
       .polygonSideColor((d) => (d.nivel === 'estado' ? 'rgba(0,0,0,0)' : '#d9d4c7'))
       .polygonStrokeColor((d) => (d.nivel === 'estado' ? '#c7c2b4' : '#9aa0a6'))
-      .polygonAltitude(ALTITUD_POLIGONO_FRONTERAS);
+      .polygonAltitude((d) => altitudPoligono(d, ALTITUD_POLIGONO_FRONTERAS, ALTITUD_POLIGONO_ESTADOS_FRONTERAS));
   }
   await actualizarDetallePorZoom(camaraActual.altitude ?? 2.5);
 }
