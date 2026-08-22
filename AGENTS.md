@@ -175,15 +175,33 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   también se redujo (país `0.45`/estado `0.3`/ciudad `0.2`, antes hasta `1.15`) —
   los valores originales generaban texto desproporcionadamente grande frente al
   tamaño real de los países. **Altitud de los polígonos de estado (2026-08-22,
-  corrección):** un estado ocupa exactamente la misma área que su país, así que a
-  la misma altitud que `ALTITUD_POLIGONO_FRONTERAS`/`ALTITUD_POLIGONO_SATELITE_FRONTERAS`
-  el borde estatal competía por el mismo plano que el país (z-fighting) y ganaba o
-  perdía el desempate según la geometría exacta de cada país, sin relación con los
-  datos — los estados de EE.UU. se veían, los de México no, con la misma fuente
-  para ambos. `polygonAltitude` pasó de un número fijo a una función
-  (`altitudPoligono()`) que sube el nivel "estado" claramente por encima del país
-  (`ALTITUD_POLIGONO_ESTADOS_FRONTERAS` `0.016` / `ALTITUD_POLIGONO_ESTADOS_SATELITE_FRONTERAS`
-  `0.004`) en vez de compartir la misma altitud.
+  robustez):** un estado ocupa exactamente la misma área que su país, así que a la
+  misma altitud que `ALTITUD_POLIGONO_FRONTERAS`/`ALTITUD_POLIGONO_SATELITE_FRONTERAS`
+  el borde estatal competiría por el mismo plano que el país (z-fighting). Se separó
+  por si acaso (`polygonAltitude` pasó de un número fijo a una función
+  `altitudPoligono()` que sube el nivel "estado" claramente por encima del país:
+  `ALTITUD_POLIGONO_ESTADOS_FRONTERAS` `0.016` / `ALTITUD_POLIGONO_ESTADOS_SATELITE_FRONTERAS`
+  `0.004`) — **aunque resultó no ser la causa real de que México no apareciera**, ver
+  el punto siguiente. **Cobertura incompleta de Natural Earth (2026-08-22,
+  corrección real):** `obtenerEstados()` combina dos fuentes porque Natural Earth
+  admin-1 (`URL_ESTADOS_GEOJSON`) **no tiene cobertura global** — verificado
+  descargando el shapefile fuente completo
+  (`50m_cultural/ne_50m_admin_1_states_provinces.shp` del repo
+  `nvkelso/natural-earth-vector`): solo trae 9 países (Rusia, EE.UU., India,
+  Indonesia, China, Brasil, Canadá, Australia, Sudáfrica), México nunca estuvo — no
+  es un límite de esta app ni un bug de zoom/altitud/z-fighting, es el alcance real
+  de esa fuente gratuita. Se completa con `datos/mexico-estados.geojson` (32
+  estados, geoBoundaries CC BY 4.0 — Runfola et al. 2020 — descargado del release
+  `gbOpen`/`MEX`/`ADM1` y simplificado con `mapshaper -simplify 8%` de ~4 MB a ~165
+  KB), **vendorizado en este repo y servido por Firebase Hosting** (`firebase.json`
+  sirve `"public": "."`, así que cualquier archivo estático nuevo se publica solo)
+  en vez de depender en vivo de un tercero más — más confiable que un mirror de
+  GitHub de un repo personal sin licencia explícita, y sin el peso de bajar el
+  archivo completo de geoBoundaries (36 MB sin simplificar) en el navegador del
+  usuario. `nombreDeFeature()` reconoce `shapeName` (el campo de geoBoundaries)
+  además de las variantes de Natural Earth. `obtenerEstadosNaturalEarth()` y
+  `obtenerEstadosMexico()` degradan por separado (`try/catch` → `[]`) — si una
+  fuente falla, la otra igual aparece.
 - **Giro automático** (`#menu-giro`, junto al menú de vista, `js/main.js`):
   usa directo `globo.controls().autoRotate`/`.autoRotateSpeed` — son propiedades
   de los controles de three.js/OrbitControls que expone globe.gl, no hace falta
