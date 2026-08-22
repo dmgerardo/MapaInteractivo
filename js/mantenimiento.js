@@ -1,13 +1,13 @@
 // Vista de mantenimiento de las capas administradas a mano (Mis Localidades, Mis
 // Vecinos, ...). Único lugar de la app que escribe en Firebase — requiere sesión de
 // un correo autorizado (ver AGENTS.md sección 8.2 y database.rules.json).
-import { agregar, actualizar, eliminar, suscribir } from './db.js?v=7';
-import { esc, urlSegura } from './utilidades.js?v=7';
-import { ICONOS } from './iconos.js?v=7';
+import { agregar, actualizar, eliminar, suscribir } from './db.js?v=8';
+import { esc, urlSegura } from './utilidades.js?v=8';
+import { ICONOS } from './iconos.js?v=8';
 import {
   iniciarSesionGoogle, cerrarSesion, onCambioSesion, esAdmin,
-} from './auth.js?v=7';
-import { subirFoto } from './storage.js?v=7';
+} from './auth.js?v=8';
+import { subirFoto } from './storage.js?v=8';
 
 // Agregar una capa nueva aquí es lo único que hace falta para que aparezca como
 // pestaña en esta página, con el mismo formulario y la misma carga masiva — ver

@@ -166,15 +166,24 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   polígono (`centroideDePoligono()`) — no es un centroide geográfico exacto, solo
   necesita alcanzar para ubicar el texto. **Altitud y color de las etiquetas
   (2026-08-22, corrección):** `ALTITUD_ETIQUETAS` (`0.02`) tiene que quedar por
-  encima de la altitud más alta usada por los polígonos (`ALTITUD_POLIGONO_FRONTERAS`,
-  `0.012`) — con una altitud menor el texto queda por debajo de la superficie del
-  país y las paredes laterales de la extrusión lo cortan/tapan. El color
+  encima de la altitud más alta usada por los polígonos (`ALTITUD_POLIGONO_ESTADOS_FRONTERAS`,
+  `0.016`) — con una altitud menor el texto queda por debajo de la superficie del
+  país/estado y las paredes laterales de la extrusión lo cortan/tapan. El color
   (`colorEtiqueta()`) lee `vistaActual` en vez de ser fijo: blanco en
   `satelite-fronteras` (fondo de imagen satelital oscura, un gris oscuro ahí se
   perdía por completo) y gris oscuro en `fronteras` (fondo plano claro). `labelSize`
   también se redujo (país `0.45`/estado `0.3`/ciudad `0.2`, antes hasta `1.15`) —
   los valores originales generaban texto desproporcionadamente grande frente al
-  tamaño real de los países.
+  tamaño real de los países. **Altitud de los polígonos de estado (2026-08-22,
+  corrección):** un estado ocupa exactamente la misma área que su país, así que a
+  la misma altitud que `ALTITUD_POLIGONO_FRONTERAS`/`ALTITUD_POLIGONO_SATELITE_FRONTERAS`
+  el borde estatal competía por el mismo plano que el país (z-fighting) y ganaba o
+  perdía el desempate según la geometría exacta de cada país, sin relación con los
+  datos — los estados de EE.UU. se veían, los de México no, con la misma fuente
+  para ambos. `polygonAltitude` pasó de un número fijo a una función
+  (`altitudPoligono()`) que sube el nivel "estado" claramente por encima del país
+  (`ALTITUD_POLIGONO_ESTADOS_FRONTERAS` `0.016` / `ALTITUD_POLIGONO_ESTADOS_SATELITE_FRONTERAS`
+  `0.004`) en vez de compartir la misma altitud.
 - **Giro automático** (`#menu-giro`, junto al menú de vista, `js/main.js`):
   usa directo `globo.controls().autoRotate`/`.autoRotateSpeed` — son propiedades
   de los controles de three.js/OrbitControls que expone globe.gl, no hace falta

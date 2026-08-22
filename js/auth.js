@@ -1,6 +1,6 @@
 // Autenticación (Google Sign-In) — solo se usa en páginas de mantenimiento que
 // necesitan escribir datos. El mapa público (index.html) no la importa.
-import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=7';
+import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=8';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
