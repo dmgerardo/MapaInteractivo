@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=8';
-import { esc, urlSegura } from './utilidades.js?v=8';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=8';
-import { APP_VERSION } from './version.js?v=8';
+import { suscribir } from './db.js?v=9';
+import { esc, urlSegura } from './utilidades.js?v=9';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=9';
+import { APP_VERSION } from './version.js?v=9';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -227,6 +227,15 @@ const URL_PAISES_GEOJSON = '//unpkg.com/three-globe/example/country-polygons/ne_
 // para ciudades (alcanza para "ciudades principales por país", que es el objetivo).
 const URL_ESTADOS_GEOJSON = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector/geojson/ne_50m_admin_1_states_provinces.geojson';
 const URL_LUGARES_GEOJSON = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector/geojson/ne_110m_populated_places.geojson';
+// El admin-1 de Natural Earth de arriba NO tiene cobertura global: solo trae 9 países
+// grandes (Rusia, EE.UU., India, Indonesia, China, Brasil, Canadá, Australia,
+// Sudáfrica) — verificado 2026-08-22 descargando el shapefile fuente completo
+// (`50m_cultural/ne_50m_admin_1_states_provinces.shp` del propio repo), no es un
+// límite de esta app ni un bug de zoom/altitud. México nunca estuvo ahí. Se completa
+// con un archivo propio (32 estados, geoBoundaries CC BY 4.0 — Runfola et al. 2020 —
+// simplificado con mapshaper de ~4 MB a ~165 KB) servido por Firebase Hosting junto
+// al resto de la app en vez de depender de un tercero más.
+const URL_ESTADOS_MEXICO_GEOJSON = '/datos/mexico-estados.geojson';
 
 const VISTAS = [
   { id: 'satelite', nombre: 'Satelital' },
@@ -261,20 +270,38 @@ async function obtenerPaises() {
   return paisesGeoJSON;
 }
 
-// A diferencia de obtenerPaises(), estas dos degradan a "sin detalle extra" en vez de
-// romper el resto del mapa si la fuente externa falla o cambia de URL — son mejora
-// visual, no datos de los que dependa el resto de la app.
+// A diferencia de obtenerPaises(), estas degradan a "sin detalle extra" en vez de
+// romper el resto del mapa si una fuente falla o cambia de URL — son mejora visual,
+// no datos de los que dependa el resto de la app. Cada fuente degrada por separado
+// (si México falla pero Natural Earth no, el resto de los 9 países igual aparece).
+async function obtenerEstadosNaturalEarth() {
+  try {
+    const respuesta = await fetch(URL_ESTADOS_GEOJSON);
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    const datos = await respuesta.json();
+    return datos.features;
+  } catch (error) {
+    console.warn('No se pudieron cargar las fronteras estatales (Natural Earth):', error);
+    return [];
+  }
+}
+
+async function obtenerEstadosMexico() {
+  try {
+    const respuesta = await fetch(URL_ESTADOS_MEXICO_GEOJSON);
+    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
+    const datos = await respuesta.json();
+    return datos.features;
+  } catch (error) {
+    console.warn('No se pudieron cargar los estados de México:', error);
+    return [];
+  }
+}
+
 async function obtenerEstados() {
   if (!estadosGeoJSON) {
-    try {
-      const respuesta = await fetch(URL_ESTADOS_GEOJSON);
-      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-      const datos = await respuesta.json();
-      estadosGeoJSON = datos.features;
-    } catch (error) {
-      console.warn('No se pudieron cargar las fronteras estatales:', error);
-      estadosGeoJSON = [];
-    }
+    const [naturalEarth, mexico] = await Promise.all([obtenerEstadosNaturalEarth(), obtenerEstadosMexico()]);
+    estadosGeoJSON = naturalEarth.concat(mexico);
   }
   return estadosGeoJSON;
 }
@@ -295,10 +322,11 @@ async function obtenerLugares() {
 }
 
 // El nombre del campo varía según la versión/export de Natural Earth — se prueban
-// las variantes conocidas en vez de asumir una sola.
+// las variantes conocidas en vez de asumir una sola. `shapeName` es el campo que usa
+// geoBoundaries (datos/mexico-estados.geojson), otra fuente distinta a Natural Earth.
 function nombreDeFeature(feature) {
   const p = feature.properties || {};
-  return p.NAME || p.name || p.NAMEASCII || p.nameascii || p.NAME_EN || '';
+  return p.NAME || p.name || p.NAMEASCII || p.nameascii || p.NAME_EN || p.shapeName || '';
 }
 
 // Centroide aproximado (promedio de vértices, no ponderado por área) del anillo con
