@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=6';
-import { esc, urlSegura } from './utilidades.js?v=6';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=6';
-import { APP_VERSION } from './version.js?v=6';
+import { suscribir } from './db.js?v=7';
+import { esc, urlSegura } from './utilidades.js?v=7';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=7';
+import { APP_VERSION } from './version.js?v=7';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -48,6 +48,12 @@ botonMenuVista.addEventListener('click', () => {
 botonReporte.innerHTML = ICONOS.reporte;
 botonCerrarReporte.innerHTML = ICONOS.cerrar;
 
+// Altitud de las etiquetas de fronteras: tiene que quedar por encima de la altitud
+// más alta usada por los polígonos (ALTITUD_POLIGONO_FRONTERAS, 0.012 — ver más
+// abajo) o el texto queda "por debajo" de la superficie del país y se ve cortado/
+// tapado por sus paredes laterales (reportado 2026-08-22).
+const ALTITUD_ETIQUETAS = 0.02;
+
 const globo = Globe()(contenedor)
   .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
   .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
@@ -63,11 +69,11 @@ const globo = Globe()(contenedor)
   .labelLat('lat')
   .labelLng('lon')
   .labelText('texto')
-  .labelSize((d) => (d.nivel === 'pais' ? 1.15 : d.nivel === 'estado' ? 0.75 : 0.5))
-  .labelColor((d) => (d.nivel === 'pais' ? 'rgba(40,40,40,0.9)' : d.nivel === 'estado' ? 'rgba(70,70,70,0.85)' : 'rgba(90,90,90,0.85)'))
+  .labelSize((d) => (d.nivel === 'pais' ? 0.45 : d.nivel === 'estado' ? 0.3 : 0.2))
+  .labelColor((d) => colorEtiqueta(d.nivel))
   .labelDotRadius(0)
   .labelResolution(3)
-  .labelAltitude(0.005);
+  .labelAltitude(ALTITUD_ETIQUETAS);
 
 // Centro de México (Zacatecas, aprox. geográfico del país) — el globo abre ahí en
 // vez del (0,0) por defecto de globe.gl.
@@ -336,6 +342,18 @@ function nivelParaAltitud(altitude) {
   if (altitude < UMBRAL_ALTITUD_CIUDADES) return 'ciudad';
   if (altitude < UMBRAL_ALTITUD_ESTADOS) return 'estado';
   return 'pais';
+}
+
+// Color de las etiquetas según el modo de vista activo (lee `vistaActual`, no un
+// parámetro, porque labelColor no recibe el modo — solo el datum de la etiqueta).
+// En "satelite-fronteras" el fondo es la imagen satelital oscura: texto oscuro ahí
+// se pierde por completo (reportado 2026-08-22), por eso usa blanco. En "fronteras"
+// el fondo es el mapa plano claro (`OCEANO_PLANO`/`#f2efe9`), por eso sigue oscuro.
+function colorEtiqueta(nivel) {
+  const fondoOscuro = vistaActual === 'satelite-fronteras';
+  if (nivel === 'pais') return fondoOscuro ? 'rgba(255,255,255,0.95)' : 'rgba(35,35,35,0.92)';
+  if (nivel === 'estado') return fondoOscuro ? 'rgba(255,255,255,0.85)' : 'rgba(70,70,70,0.85)';
+  return fondoOscuro ? 'rgba(255,255,255,0.78)' : 'rgba(95,95,95,0.8)';
 }
 
 async function construirPoligonosFronteras(nivel) {
