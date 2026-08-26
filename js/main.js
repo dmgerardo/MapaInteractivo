@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir, consultarHistorico } from './db.js?v=10';
-import { esc, urlSegura } from './utilidades.js?v=10';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=10';
-import { APP_VERSION } from './version.js?v=10';
+import { suscribir, consultarHistorico } from './db.js?v=11';
+import { esc, urlSegura } from './utilidades.js?v=11';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=11';
+import { APP_VERSION } from './version.js?v=11';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -158,22 +158,70 @@ function capaVisible(capaId) {
   return !capasOcultasPorUsuario.has(capaId);
 }
 
-// Agrupa marcadores vecinos (ver "Agrupar marcadores cercanos" más abajo) antes de
-// llamar a esta función — un punto sin agrupar llega con sus campos normales, uno
-// agrupado llega con `esGrupo: true` y `grupo` (el array de puntos que representa).
-function crearMarcadorEvento(punto) {
+// Radio (px) al que se despliegan los íconos individuales alrededor del círculo de
+// conteo — ver crearMarcadorGrupo().
+const RADIO_DESPLIEGUE_GRUPO = 34;
+
+// Un grupo (ver "Agrupar marcadores cercanos" más abajo) no solo acerca la cámara al
+// hacer clic: acercar nunca separa eventos que están genuinamente en el mismo lugar
+// (o casi), así que el círculo con el conteo también se puede "abrir" para desplegar
+// el ícono real de cada evento en abanico a su alrededor, cada uno clicable — es la
+// única forma de llegar a un evento que tiene otro exactamente encima. El elemento
+// raíz (`el`) es el mismo que devuelve globe.gl posicionado en lat/lon; los íconos
+// desplegados son hijos posicionados con `transform` relativo a ese mismo punto, así
+// que rotan/hacen zoom junto con el grupo sin cálculo de coordenadas propio.
+function crearMarcadorGrupo(punto) {
   const el = document.createElement('div');
-  if (punto.esGrupo) {
-    el.className = 'marcador-grupo';
-    el.textContent = String(punto.grupo.length);
-    el.title = `${punto.grupo.length} eventos — clic para acercar`;
-    el.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const altitudActual = camaraActual.altitude ?? 2.5;
-      globo.pointOfView({ lat: punto.lat, lng: punto.lon, altitude: Math.max(altitudActual / 3, 0.02) }, 800);
-    });
-    return el;
+  el.className = 'marcador-grupo';
+
+  const centro = document.createElement('div');
+  centro.className = 'marcador-grupo-centro';
+  centro.textContent = String(punto.grupo.length);
+  centro.title = `${punto.grupo.length} eventos — clic para desplegar`;
+  el.appendChild(centro);
+
+  let desplegado = false;
+
+  function colapsar() {
+    desplegado = false;
+    el.classList.remove('desplegado');
+    el.querySelectorAll('.marcador-grupo-item').forEach((nodo) => nodo.remove());
   }
+
+  function abrir() {
+    desplegado = true;
+    el.classList.add('desplegado');
+    const total = punto.grupo.length;
+    punto.grupo.forEach((evento, indice) => {
+      const angulo = (2 * Math.PI * indice) / total - Math.PI / 2;
+      const item = document.createElement('div');
+      item.className = 'marcador-grupo-item';
+      item.style.transform = `translate(${Math.cos(angulo) * RADIO_DESPLIEGUE_GRUPO}px, ${Math.sin(angulo) * RADIO_DESPLIEGUE_GRUPO}px)`;
+      item.style.color = evento.color;
+      item.innerHTML = ICONOS_EVENTO[evento.categoria] || ICONO_EVENTO_DEFAULT;
+      item.title = evento.historico ? `${evento.titulo} (histórico)` : evento.titulo;
+      item.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        mostrarPanelEvento(evento);
+      });
+      el.appendChild(item);
+    });
+  }
+
+  centro.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (desplegado) colapsar(); else abrir();
+  });
+
+  return el;
+}
+
+// Un punto sin agrupar llega con sus campos normales; uno agrupado llega con
+// `esGrupo: true` y `grupo` (el array de puntos que representa) — ver
+// "Agrupar marcadores cercanos" más abajo.
+function crearMarcadorEvento(punto) {
+  if (punto.esGrupo) return crearMarcadorGrupo(punto);
+  const el = document.createElement('div');
   el.className = `marcador-evento${punto.historico ? ' historico' : ''}`;
   el.style.color = punto.color;
   el.innerHTML = ICONOS_EVENTO[punto.categoria] || ICONO_EVENTO_DEFAULT;
@@ -547,10 +595,10 @@ renderizarMenuVista();
 // actualizarDetallePorZoom() de arriba, reutiliza el mismo .onZoom() en vez de un
 // mecanismo de detección de zoom aparte. Un evento solo se pinta con su ícono normal
 // (crearMarcadorEvento); 2+ en la misma celda se agrupan en un marcador con el
-// conteo — clic acerca la cámara hasta que se separan solos (mismo criterio que ya
-// usa el panel de reporte al centrar la cámara en una fila). El reporte (más abajo)
-// sigue listando eventos individuales — agrupar es solo para el dibujo del globo,
-// no para la lista.
+// conteo (ver crearMarcadorGrupo() más arriba) — clic lo despliega en abanico para
+// poder acceder a cada evento, incluso si dos están genuinamente en el mismo lugar
+// (acercar la cámara no los separaría). El reporte (más abajo) sigue listando
+// eventos individuales — agrupar es solo para el dibujo del globo, no para la lista.
 function celdaClusterParaAltitud(altitude) {
   if (altitude >= 1.0) return 6;
   if (altitude >= 0.4) return 2;
