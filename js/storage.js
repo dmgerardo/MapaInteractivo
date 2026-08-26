@@ -1,7 +1,7 @@
 // Subida de fotos a Firebase Storage — solo usado por páginas de mantenimiento con
 // escritura (ver AGENTS.md sección 8.2). storage.rules exige el mismo correo
 // autorizado que database.rules.json.
-import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=10';
+import { firebaseConfig, CONFIGURADO } from './firebase-config.js?v=11';
 import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
   getStorage, ref, uploadBytes, getDownloadURL,

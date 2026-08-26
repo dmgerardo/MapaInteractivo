@@ -227,8 +227,20 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   de `0.08°`), mismo patrón y mismo `.onZoom()` que ya usa el detalle progresivo por
   zoom de fronteras (arriba), en vez de un mecanismo de detección de zoom aparte. Un
   evento sin vecinos se pinta con su ícono normal; 2+ en la misma celda se agrupan en
-  un marcador circular con el conteo (`.marcador-grupo`) — clic acerca la cámara
-  (divide la altitud entre 3) hasta que se separan solos. `celdaClusterActual` está
+  un marcador circular con el conteo (`.marcador-grupo`/`crearMarcadorGrupo()`).
+  **Desplegar en abanico (2026-08-26, corrección):** el primer intento hacía zoom al
+  centro del grupo al hacer clic, pero acercar la cámara nunca separa dos eventos que
+  están genuinamente en el mismo lugar (o casi) — quedaban inalcanzables. Ahora clic
+  en el círculo **despliega** el ícono real de cada evento del grupo en abanico a su
+  alrededor (`RADIO_DESPLIEGUE_GRUPO`, `34px`), cada uno clicable; clic de nuevo en
+  el círculo los colapsa. Los íconos desplegados son hijos DOM del mismo elemento
+  raíz que ya posiciona globe.gl en lat/lon (vía `transform: translate()` relativo,
+  sin lat/lon propia) — rotan/hacen zoom junto con el grupo sin cálculo de
+  coordenadas 3D aparte. El estado desplegado/colapsado vive en una variable local
+  de `crearMarcadorGrupo()` (no en el objeto `punto`) — se pierde si three-globe
+  recrea el marcador (ej. al re-agrupar por cambio de zoom), lo cual es correcto:
+  si cambia la composición del grupo, no tiene sentido mantener un despliegue viejo.
+  `celdaClusterActual` está
   declarado junto al resto del estado al inicio del archivo, no junto a las
   funciones de clustering — `repintarPuntos()` puede dispararse antes de llegar a
   esa sección del archivo (ver el ReferenceError de TDZ que esto evitó, encontrado
