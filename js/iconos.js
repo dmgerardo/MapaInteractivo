@@ -21,6 +21,7 @@ export const ICONOS = {
   reproducir: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>',
   pausar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>',
   marca: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="15" cy="16" r="9.2"/><path d="M5.8 16h18.4"/><path d="M15 6.8c3.4 2.7 3.4 15.7 0 18.4"/><path d="M15 6.8c-3.4 2.7-3.4 15.7 0 18.4"/></g><circle cx="23.6" cy="9.2" r="3.6" fill="#FF9800"/></svg>',
+  historico: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/></svg>',
 };
 
 // Íconos por categoría de evento — se pintan sobre el globo en vez de un punto genérico.

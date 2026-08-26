@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir } from './db.js?v=9';
-import { esc, urlSegura } from './utilidades.js?v=9';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=9';
-import { APP_VERSION } from './version.js?v=9';
+import { suscribir, consultarHistorico } from './db.js?v=10';
+import { esc, urlSegura } from './utilidades.js?v=10';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=10';
+import { APP_VERSION } from './version.js?v=10';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -20,6 +20,13 @@ const botonReporte = document.getElementById('boton-reporte');
 const panelReporte = document.getElementById('panel-reporte');
 const botonCerrarReporte = document.getElementById('cerrar-panel-reporte');
 const listaReporte = document.getElementById('lista-reporte');
+const botonHistorico = document.getElementById('boton-historico');
+const panelHistorico = document.getElementById('panel-historico');
+const inputHistoricoDesde = document.getElementById('historico-desde');
+const inputHistoricoHasta = document.getElementById('historico-hasta');
+const checkboxOcultarActuales = document.getElementById('ocultar-eventos-actuales');
+const botonAplicarHistorico = document.getElementById('boton-aplicar-historico');
+const estadoHistorico = document.getElementById('estado-historico');
 const enlaceMantenimiento = document.getElementById('enlace-mantenimiento');
 const botonVersion = document.getElementById('boton-version');
 const marcaApp = document.getElementById('marca-app');
@@ -47,6 +54,7 @@ botonMenuVista.addEventListener('click', () => {
 
 botonReporte.innerHTML = ICONOS.reporte;
 botonCerrarReporte.innerHTML = ICONOS.cerrar;
+botonHistorico.innerHTML = ICONOS.historico;
 
 // Altitud de las etiquetas de fronteras: tiene que quedar por encima de la altitud
 // más alta usada por los polígonos (ALTITUD_POLIGONO_ESTADOS_FRONTERAS, 0.016 — ver
@@ -61,7 +69,13 @@ const globo = Globe()(contenedor)
   .htmlLat('lat')
   .htmlLng('lon')
   .htmlElement(crearMarcadorEvento)
-  .htmlElementVisibilityModifier((el, esVisible) => { el.style.opacity = esVisible ? 1 : 0; })
+  // Los eventos históricos se pintan más tenues (ver crearMarcadorEvento) mediante la
+  // clase 'historico' — esta función solo alterna 0/visible↔invisible por hemisferio,
+  // así que respeta esa opacidad base en vez de imponer 1 a secas (que la taparía).
+  .htmlElementVisibilityModifier((el, esVisible) => {
+    const opacidadBase = el.classList.contains('historico') ? 0.55 : 1;
+    el.style.opacity = esVisible ? opacidadBase : 0;
+  })
   .onZoom(alCambiarCamara)
   // Etiquetas de país/estado/ciudad del modo Fronteras (ver "Detalle por zoom" más
   // abajo) — accesores fijos, el contenido se actualiza con .labelsData() según el
@@ -121,6 +135,18 @@ let capas = {};
 let eventosPorCapa = {};
 let puntosActuales = [];
 
+// --- Histórico de eventos (ver sección dedicada más abajo) e "ocultar actuales" —
+// declarados acá porque repintarPuntos() y crearMarcadorEvento() ya los necesitan.
+let historicoActivo = false;
+let ocultarEventosActuales = false;
+let puntosHistoricos = [];
+
+// Celda de agrupación de marcadores (ver "Agrupar marcadores cercanos" más abajo) —
+// declarada acá, no junto a las funciones que la usan, porque repintarPuntos() puede
+// dispararse (vía suscribir()) antes de llegar a esa sección del archivo y celda*Actual
+// debe existir ya inicializada en ese momento.
+let celdaClusterActual = celdaClusterParaAltitud(2.5); // altitud inicial, ver CENTRO_MEXICO
+
 // Capas que el usuario ocultó a mano desde el menú — se guarda lo OCULTO, no lo
 // activo, para que una capa nueva aparezca visible por default sin tener que
 // "activarla". Ver AGENTS.md sección 3 (convenciones de filtros).
@@ -132,12 +158,26 @@ function capaVisible(capaId) {
   return !capasOcultasPorUsuario.has(capaId);
 }
 
+// Agrupa marcadores vecinos (ver "Agrupar marcadores cercanos" más abajo) antes de
+// llamar a esta función — un punto sin agrupar llega con sus campos normales, uno
+// agrupado llega con `esGrupo: true` y `grupo` (el array de puntos que representa).
 function crearMarcadorEvento(punto) {
   const el = document.createElement('div');
-  el.className = 'marcador-evento';
+  if (punto.esGrupo) {
+    el.className = 'marcador-grupo';
+    el.textContent = String(punto.grupo.length);
+    el.title = `${punto.grupo.length} eventos — clic para acercar`;
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const altitudActual = camaraActual.altitude ?? 2.5;
+      globo.pointOfView({ lat: punto.lat, lng: punto.lon, altitude: Math.max(altitudActual / 3, 0.02) }, 800);
+    });
+    return el;
+  }
+  el.className = `marcador-evento${punto.historico ? ' historico' : ''}`;
   el.style.color = punto.color;
   el.innerHTML = ICONOS_EVENTO[punto.categoria] || ICONO_EVENTO_DEFAULT;
-  el.title = punto.titulo;
+  el.title = punto.historico ? `${punto.titulo} (histórico)` : punto.titulo;
   el.addEventListener('click', (ev) => {
     ev.stopPropagation();
     mostrarPanelEvento(punto);
@@ -147,17 +187,25 @@ function crearMarcadorEvento(punto) {
 
 function repintarPuntos() {
   const puntos = [];
-  for (const [capaId, eventos] of Object.entries(eventosPorCapa)) {
-    if (!capaVisible(capaId)) continue;
-    const capa = capas[capaId];
-    const color = capa?.color || COLOR_CAPA_DEFAULT;
-    for (const [eventoId, evento] of Object.entries(eventos || {})) {
-      if (typeof evento?.lat !== 'number' || typeof evento?.lon !== 'number') continue;
-      puntos.push({ ...evento, capaId, eventoId, color });
+  if (!ocultarEventosActuales) {
+    for (const [capaId, eventos] of Object.entries(eventosPorCapa)) {
+      if (!capaVisible(capaId)) continue;
+      const capa = capas[capaId];
+      const color = capa?.color || COLOR_CAPA_DEFAULT;
+      for (const [eventoId, evento] of Object.entries(eventos || {})) {
+        if (typeof evento?.lat !== 'number' || typeof evento?.lon !== 'number') continue;
+        puntos.push({ ...evento, capaId, eventoId, color });
+      }
+    }
+  }
+  if (historicoActivo) {
+    for (const punto of puntosHistoricos) {
+      if (!capaVisible(punto.capaId)) continue;
+      puntos.push(punto);
     }
   }
   puntosActuales = puntos;
-  globo.htmlElementsData(puntos);
+  aplicarClusterAlGlobo();
   if (!panelReporte.classList.contains('oculto')) renderizarReporte();
 }
 
@@ -493,6 +541,54 @@ function renderizarMenuVista() {
 }
 renderizarMenuVista();
 
+// --- Agrupar marcadores cercanos (evita que se sobrepongan) -----------------------
+// Sin librería de clustering nueva: se agrupan por celda de una grilla lat/lon cuyo
+// tamaño depende de la altitud de cámara — mismo patrón que nivelParaAltitud()/
+// actualizarDetallePorZoom() de arriba, reutiliza el mismo .onZoom() en vez de un
+// mecanismo de detección de zoom aparte. Un evento solo se pinta con su ícono normal
+// (crearMarcadorEvento); 2+ en la misma celda se agrupan en un marcador con el
+// conteo — clic acerca la cámara hasta que se separan solos (mismo criterio que ya
+// usa el panel de reporte al centrar la cámara en una fila). El reporte (más abajo)
+// sigue listando eventos individuales — agrupar es solo para el dibujo del globo,
+// no para la lista.
+function celdaClusterParaAltitud(altitude) {
+  if (altitude >= 1.0) return 6;
+  if (altitude >= 0.4) return 2;
+  if (altitude >= 0.08) return 0.4;
+  return 0.08;
+}
+
+function agruparPuntos(puntos, celda) {
+  const celdas = new Map();
+  for (const punto of puntos) {
+    const clave = `${Math.round(punto.lat / celda)}_${Math.round(punto.lon / celda)}`;
+    if (!celdas.has(clave)) celdas.set(clave, []);
+    celdas.get(clave).push(punto);
+  }
+  const resultado = [];
+  for (const grupo of celdas.values()) {
+    if (grupo.length === 1) {
+      resultado.push(grupo[0]);
+      continue;
+    }
+    const lat = grupo.reduce((suma, p) => suma + p.lat, 0) / grupo.length;
+    const lon = grupo.reduce((suma, p) => suma + p.lon, 0) / grupo.length;
+    resultado.push({ lat, lon, grupo, esGrupo: true });
+  }
+  return resultado;
+}
+
+function aplicarClusterAlGlobo() {
+  globo.htmlElementsData(agruparPuntos(puntosActuales, celdaClusterActual));
+}
+
+function actualizarClusterPorZoom(altitude) {
+  const celda = celdaClusterParaAltitud(altitude);
+  if (celda === celdaClusterActual) return;
+  celdaClusterActual = celda;
+  aplicarClusterAlGlobo();
+}
+
 // --- Reporte: elementos actualmente en la vista (hemisferio visible) --------------
 
 let camaraActual = { ...CENTRO_MEXICO, altitude: 2.5 };
@@ -501,6 +597,7 @@ function alCambiarCamara(pov) {
   camaraActual = pov;
   if (!panelReporte.classList.contains('oculto')) renderizarReporte();
   actualizarDetallePorZoom(pov.altitude);
+  actualizarClusterPorZoom(pov.altitude);
 }
 
 // Mismo criterio de "cercano a la cámara" que usa three-globe para decidir qué
@@ -546,4 +643,85 @@ botonReporte.addEventListener('click', () => {
 botonCerrarReporte.addEventListener('click', () => {
   panelReporte.classList.add('oculto');
   botonReporte.setAttribute('aria-expanded', 'false');
+});
+
+// --- Histórico de eventos ----------------------------------------------------------
+// Ver AGENTS.md sección 8.4. Nunca un listener en vivo (onValue): es una consulta
+// única por rango de fechas (consultarHistorico() en db.js, indexada por fechaUTC)
+// que solo corre cuando el usuario pulsa "Mostrar histórico" — mientras el panel
+// está cerrado o nadie lo pidió, el histórico no descarga ni pinta nada.
+
+function formatoFechaInput(fecha) {
+  return fecha.toISOString().slice(0, 10);
+}
+
+const HOY = new Date();
+inputHistoricoHasta.value = formatoFechaInput(HOY);
+inputHistoricoDesde.value = formatoFechaInput(new Date(HOY.getTime() - 30 * 24 * 60 * 60 * 1000));
+
+botonHistorico.addEventListener('click', () => {
+  const abierto = panelHistorico.classList.toggle('oculto') === false;
+  botonHistorico.setAttribute('aria-expanded', String(abierto));
+});
+
+checkboxOcultarActuales.addEventListener('change', () => {
+  ocultarEventosActuales = checkboxOcultarActuales.checked;
+  repintarPuntos();
+});
+
+async function mostrarHistorico() {
+  const desde = inputHistoricoDesde.value;
+  const hasta = inputHistoricoHasta.value;
+  if (!desde || !hasta) return;
+  botonAplicarHistorico.disabled = true;
+  estadoHistorico.textContent = 'Cargando…';
+  try {
+    const desdeUTC = new Date(`${desde}T00:00:00.000Z`).toISOString();
+    const hastaUTC = new Date(`${hasta}T23:59:59.999Z`).toISOString();
+    // Se consulta cada capa que el cliente ya conoce (nunca una lista fija a mano,
+    // mismo criterio que el menú de capas) — cada consulta va indexada y acotada por
+    // separado, así que una capa sin histórico (ej. las manuales, ver deuda en
+    // AGENTS.md) simplemente devuelve vacío sin afectar a las demás.
+    const idsCapas = Object.keys(capas);
+    const resultados = await Promise.all(
+      idsCapas.map((capaId) => consultarHistorico(capaId, desdeUTC, hastaUTC)),
+    );
+    const puntos = [];
+    let truncado = false;
+    resultados.forEach(({ eventos, truncado: capaTruncada }, indice) => {
+      const capaId = idsCapas[indice];
+      const color = capas[capaId]?.color || COLOR_CAPA_DEFAULT;
+      if (capaTruncada) truncado = true;
+      for (const evento of eventos) {
+        if (typeof evento.lat !== 'number' || typeof evento.lon !== 'number') continue;
+        puntos.push({ ...evento, capaId, eventoId: evento.id, color, historico: true });
+      }
+    });
+    puntosHistoricos = puntos;
+    historicoActivo = true;
+    botonHistorico.classList.add('activo');
+    botonAplicarHistorico.textContent = 'Ocultar histórico';
+    estadoHistorico.textContent = truncado
+      ? `${puntos.length} eventos (alguna capa llegó al límite — acorta el rango para ver el resto)`
+      : `${puntos.length} eventos históricos`;
+  } catch (error) {
+    console.warn('No se pudo consultar el histórico:', error);
+    estadoHistorico.textContent = 'No se pudo cargar el histórico.';
+  } finally {
+    botonAplicarHistorico.disabled = false;
+    repintarPuntos();
+  }
+}
+
+botonAplicarHistorico.addEventListener('click', () => {
+  if (historicoActivo) {
+    historicoActivo = false;
+    puntosHistoricos = [];
+    botonHistorico.classList.remove('activo');
+    botonAplicarHistorico.textContent = 'Mostrar histórico';
+    estadoHistorico.textContent = '';
+    repintarPuntos();
+    return;
+  }
+  mostrarHistorico();
 });

@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Mapa Interactivo</title>
-  <link rel="icon" href="iconos/favicon.svg?v=9" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="iconos/icono-180.png?v=9" />
-  <link rel="mask-icon" href="iconos/mask-icon.svg?v=9" color="#4fc3f7" />
-  <link rel="manifest" href="site.webmanifest?v=9" />
+  <link rel="icon" href="iconos/favicon.svg?v=10" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="iconos/icono-180.png?v=10" />
+  <link rel="mask-icon" href="iconos/mask-icon.svg?v=10" color="#4fc3f7" />
+  <link rel="manifest" href="site.webmanifest?v=10" />
   <meta name="theme-color" content="#000814" />
-  <link rel="stylesheet" href="css/estilos.css?v=9" />
+  <link rel="stylesheet" href="css/estilos.css?v=10" />
 </head>
 <body>
   <header id="encabezado">
@@ -46,6 +46,26 @@
     </div>
   </div>
 
+  <div id="menu-historico">
+    <button id="boton-historico" type="button" aria-label="Eventos históricos" title="Eventos históricos" aria-expanded="false"></button>
+    <div id="panel-historico" class="oculto">
+      <div class="fila-historico">
+        <label for="historico-desde">Desde</label>
+        <input id="historico-desde" type="date" />
+      </div>
+      <div class="fila-historico">
+        <label for="historico-hasta">Hasta</label>
+        <input id="historico-hasta" type="date" />
+      </div>
+      <label class="fila-checkbox">
+        <input id="ocultar-eventos-actuales" type="checkbox" />
+        Ocultar eventos actuales
+      </label>
+      <button id="boton-aplicar-historico" type="button">Mostrar histórico</button>
+      <p id="estado-historico" class="texto-ayuda"></p>
+    </div>
+  </div>
+
   <button id="boton-reporte" type="button" aria-label="Reporte" title="Reporte" aria-expanded="false"></button>
 
   <aside id="panel-reporte" class="oculto" aria-live="polite">
@@ -58,6 +78,6 @@
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
 
   <!-- main.js importa db.js (que a su vez importa firebase-config.js), utilidades.js e iconos.js -->
-  <script type="module" src="js/main.js?v=9"></script>
+  <script type="module" src="js/main.js?v=10"></script>
 </body>
 </html>

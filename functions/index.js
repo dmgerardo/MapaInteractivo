@@ -9,6 +9,25 @@ const { logger } = require('firebase-functions');
 
 initializeApp();
 
+// Antes de borrar cualquier evento que salga de vivo (ventana/umbral vencido en
+// eventosGeologicos, o ya no vino en el payload de una corrida de riesgoOperativo),
+// se agrega una copia a /historico/{capaId} en la MISMA actualización atómica que
+// hace el borrado — nunca se sobreescribe ni se borra un histórico, así que la
+// clave no puede ser el eventoId original (podría reusarse en una corrida futura):
+// se usa push() para un id nuevo por archivo. Indexado por fechaUTC
+// (database.rules.json) para que el cliente lo consulte por rango de fechas sin
+// descargar el nodo entero. Ver AGENTS.md sección 8.4.
+function entradasHistorico(db, capaId, eventosHuerfanos) {
+  const entradas = {};
+  const archivadoUTC = new Date().toISOString();
+  for (const [eventoId, evento] of Object.entries(eventosHuerfanos)) {
+    if (!evento) continue;
+    const clave = db.ref(`historico/${capaId}`).push().key;
+    entradas[`historico/${capaId}/${clave}`] = { ...evento, eventoIdOriginal: eventoId, archivadoUTC };
+  }
+  return entradas;
+}
+
 const CAPA_ID = 'eventosGeologicos';
 const CONFIG_DEFAULT = { diasHaciaAtras: 7, magnitudMinima: 5.5 };
 
@@ -46,14 +65,20 @@ async function actualizarEventosGeologicos() {
 
   const idsVigentes = new Set(datos.features.map((f) => f.id));
   const existentesSnap = await db.ref(`eventos/${CAPA_ID}`).get();
-  const idsHuerfanos = Object.keys(existentesSnap.val() || {}).filter((id) => !idsVigentes.has(id));
+  const existentes = existentesSnap.val() || {};
+  const idsHuerfanos = Object.keys(existentes).filter((id) => !idsVigentes.has(id));
   if (idsHuerfanos.length > 0) {
     // Sismos que salieron de la ventana de días o ya no cumplen la magnitud mínima
-    // configurada — si no se borran, se quedan pintados en el mapa para siempre.
+    // configurada — si no se borran, se quedan pintados en el mapa para siempre. Antes
+    // de borrar, se archivan (ver entradasHistorico()).
     const bajas = {};
-    for (const id of idsHuerfanos) bajas[`eventos/${CAPA_ID}/${id}`] = null;
-    await db.ref().update(bajas);
-    logger.info(`Eliminados ${idsHuerfanos.length} eventos que salieron de la ventana/umbral configurado`);
+    const eventosHuerfanos = {};
+    for (const id of idsHuerfanos) {
+      bajas[`eventos/${CAPA_ID}/${id}`] = null;
+      eventosHuerfanos[id] = existentes[id];
+    }
+    await db.ref().update({ ...bajas, ...entradasHistorico(db, CAPA_ID, eventosHuerfanos) });
+    logger.info(`Archivados y eliminados ${idsHuerfanos.length} eventos que salieron de la ventana/umbral configurado`);
   }
 
   // Procesar en lotes concurrentes (no uno por uno): con cientos de sismos, buscar la
@@ -208,6 +233,7 @@ async function ingerirRiesgoOperativoHandler(req, res) {
   const ahoraUTC = new Date().toISOString();
   const actualizaciones = {};
   const resumen = {};
+  const idsVigentesPorCapa = {};
 
   for (const [capaId, meta] of Object.entries(METADATA_CAPAS_RIESGO)) {
     const eventos = capasPayload[capaId] || [];
@@ -236,15 +262,32 @@ async function ingerirRiesgoOperativoHandler(req, res) {
         creadoUTC: ahoraUTC,
       };
     }
+    idsVigentesPorCapa[capaId] = idsVigentes;
+  }
 
+  // Las 5 capas son independientes entre sí — se leen en paralelo (Promise.all) en vez
+  // de una por una: 5 round-trips secuenciales a la base de datos suman una latencia
+  // innecesaria (revisión de performance 2026-08-26), sin ningún beneficio de hacerlo
+  // en serie ya que ninguna lectura depende del resultado de otra.
+  const capaIds = Object.keys(METADATA_CAPAS_RIESGO);
+  const snapshots = await Promise.all(capaIds.map((capaId) => db.ref(`eventos/${capaId}`).get()));
+
+  capaIds.forEach((capaId, indice) => {
+    const idsVigentes = idsVigentesPorCapa[capaId];
+    const existentes = snapshots[indice].val() || {};
     // Reemplazo completo por capa: lo que no vino en esta corrida ya no está activo
-    // ("silencio = despejado", ver AGENTS.md sección 8.3) y se borra.
-    const existentesSnap = await db.ref(`eventos/${capaId}`).get();
-    const idsHuerfanos = Object.keys(existentesSnap.val() || {}).filter((id) => !idsVigentes.has(id));
-    for (const id of idsHuerfanos) actualizaciones[`eventos/${capaId}/${id}`] = null;
+    // ("silencio = despejado", ver AGENTS.md sección 8.3) y se borra — pero antes se
+    // archiva (ver entradasHistorico()), en la misma actualización atómica de abajo.
+    const idsHuerfanos = Object.keys(existentes).filter((id) => !idsVigentes.has(id));
+    const eventosHuerfanos = {};
+    for (const id of idsHuerfanos) {
+      actualizaciones[`eventos/${capaId}/${id}`] = null;
+      eventosHuerfanos[id] = existentes[id];
+    }
+    Object.assign(actualizaciones, entradasHistorico(db, capaId, eventosHuerfanos));
 
     resumen[capaId] = { escritos: idsVigentes.size, borrados: idsHuerfanos.length };
-  }
+  });
 
   await db.ref().update(actualizaciones);
   logger.info('Ingesta de riesgo operativo', resumen);

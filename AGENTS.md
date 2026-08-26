@@ -219,6 +219,28 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   render en cada frame de rotación cuando nadie la está viendo. Clic en una fila
   llama `globo.pointOfView({ lat, lng }, 1000)` para centrar la cámara ahí, sin
   tocar la altitude actual (mantiene el zoom del usuario).
+- **Agrupar marcadores cercanos** (2026-08-26, `js/main.js`): antes, dos eventos
+  cercanos (ej. dos alertas de riesgo en la misma ciudad) se pintaban exactamente
+  encima uno del otro, ilegibles. Sin librería de clustering nueva: `agruparPuntos()`
+  agrupa por celda de una grilla lat/lon cuyo tamaño depende de la altitud de cámara
+  (`celdaClusterParaAltitud()` — más grande alejado, más chico cerca, hasta un piso
+  de `0.08°`), mismo patrón y mismo `.onZoom()` que ya usa el detalle progresivo por
+  zoom de fronteras (arriba), en vez de un mecanismo de detección de zoom aparte. Un
+  evento sin vecinos se pinta con su ícono normal; 2+ en la misma celda se agrupan en
+  un marcador circular con el conteo (`.marcador-grupo`) — clic acerca la cámara
+  (divide la altitud entre 3) hasta que se separan solos. `celdaClusterActual` está
+  declarado junto al resto del estado al inicio del archivo, no junto a las
+  funciones de clustering — `repintarPuntos()` puede dispararse antes de llegar a
+  esa sección del archivo (ver el ReferenceError de TDZ que esto evitó, encontrado
+  probando con un mock de Firebase que dispara `onValue` sincrónicamente; con
+  Firebase real nunca pasa porque `onValue` siempre es async, pero la dependencia de
+  orden era frágil de todos modos). El panel de reporte (arriba) sigue listando
+  eventos individuales sin agrupar — agrupar es solo para el dibujo del globo, no
+  para la lista.
+- **Histórico de eventos**: ver sección 8.4 (modelo de datos + UI del panel
+  `#menu-historico`) — mismo botón/panel flotante, pero se documenta junto al modelo
+  de datos porque el diseño de performance (nunca un listener en vivo, consulta
+  indexada por rango) es la parte que importa preservar si se toca.
 
 ## 4. Seguridad — no negociable
 
@@ -493,10 +515,16 @@ para no depender de que el LLM la escriba bien.
 por capa** — la skill siempre manda las 5 claves (arreglo vacío si esa
 categoría no tuvo novedad), y la función borra en cada capa cualquier evento
 que no haya venido en el payload de esa corrida (mismo patrón de
-`idsHuerfanos` que ya usa `actualizarEventosGeologicos`, sección 8.1). El
+`idsHuerfanos` que ya usa `actualizarEventosGeologicos`, sección 8.1) — y antes
+de borrar, archiva cada huérfano en `/historico` (sección 8.4). El
 `id` de cada evento es un slug estable armado por la skill
 (`{país}-{ciudad}-{tipo}`), no `push()`, para que una alerta que sigue activa
 al día siguiente se actualice en vez de duplicarse.
+
+**Performance (revisión 2026-08-26):** la lectura de `eventos/{capaId}` de las
+5 capas (para calcular huérfanos) se hace con `Promise.all`, no una por una en
+serie dentro del `for` — ninguna lectura depende de otra, así que 5
+round-trips secuenciales solo sumaban latencia sin ningún beneficio.
 
 **Programación:** una Routine de Claude Code (`create_new_session_on_fire`),
 una vez al día, que clona/usa este repo y sigue la skill. No usa Cloud
@@ -507,6 +535,76 @@ Firebase.
 Markdown/HTML bajo demanda) — se retiró porque esta información ahora vive en
 el mapa. El skill `gv-reporte-riesgo-operativo` (de otro contexto/usuario) no
 se tocó.
+
+## 8.4 Histórico de eventos (2026-08-26)
+
+Cada vez que un agente **poda** un evento de `/eventos/{capaId}` (salió de la
+ventana/umbral en `actualizarEventosGeologicos`, sección 8.1; o ya no vino en
+el payload de una corrida de `ingerirRiesgoOperativo`, sección 8.3), antes de
+borrarlo se guarda una copia en `/historico/{capaId}/{idNuevo}` — mismos
+campos que el evento vivo más `eventoIdOriginal` (el id que tenía en
+`/eventos`) y `archivadoUTC` (cuándo se archivó). Nunca se sobreescribe ni se
+borra un histórico, por eso la clave es un `push()` nuevo por archivo y no el
+`eventoId` original (que sí puede reusarse: la skill de riesgo operativo arma
+slugs estables tipo `{país}-{ciudad}-{tipo}`, y esa misma alerta podría volver
+a activarse meses después). El archivado y el borrado van en la **misma
+actualización atómica** (`entradasHistorico()` en `functions/index.js`,
+compartida por los dos agentes) — nunca hay una ventana donde un evento no
+esté ni vivo ni archivado.
+
+**Diseñado explícitamente para no degradar el performance de la app aunque se
+acumulen varios años de eventos:**
+
+1. **El cliente nunca abre un listener en vivo (`onValue`) sobre
+   `/historico`** — `consultarHistorico()` en `js/db.js` es una consulta única
+   (`get()`) que solo corre cuando el usuario pulsa "Mostrar histórico" en
+   `#menu-historico`/`#panel-historico` (`js/main.js`). Con el panel cerrado o
+   sin usar, el histórico no descarga ni pinta nada, sin importar cuántos años
+   de datos existan.
+2. **Indexado por `fechaUTC`** (`database.rules.json`,
+   `"historico": { "$capaId": { ".indexOn": ["fechaUTC"] } }`) — sin esto,
+   Realtime Database filtra un rango de fechas **descargando el nodo entero al
+   cliente primero**, exactamente lo que hay que evitar con años de datos.
+   `consultarHistorico()` usa `orderByChild('fechaUTC')` +
+   `startAt()`/`endAt()` con los límites del rango que eligió el usuario.
+3. **Tope defensivo por capa** (`LIMITE_HISTORICO_POR_CAPA = 300` en
+   `js/db.js`, vía `limitToLast()`): un rango de fechas muy amplio en una capa
+   con mucho volumen igual no descarga miles de filas — si una capa llega al
+   tope, el panel avisa ("alguna capa llegó al límite — acorta el rango") en
+   vez de fallar o congelar el globo.
+4. **Costo de almacenamiento en Realtime Database es trivial a esta escala**:
+   unos cientos de bytes por evento archivado, del orden de unos miles de
+   eventos por año entre todos los agentes — varios años caben cómodos en la
+   capa gratuita, no hace falta un plan de purga.
+
+**UI** (`js/main.js`, `index.html`, `css/estilos.css`): botón flotante
+`#boton-historico` (ícono `calendar-clock` de Lucide, `ICONOS.historico`) abre
+`#panel-historico` con dos `<input type="date">` (rango, default los últimos
+30 días) y una casilla "Ocultar eventos actuales" (`ocultarEventosActuales`,
+igual de independiente del histórico que `capasOcultasPorUsuario` — sirve
+para despejar el mapa sin necesariamente cargar histórico). Al pulsar
+"Mostrar histórico" (`mostrarHistorico()`), se consulta **cada capa que el
+cliente ya conoce** (`Object.keys(capas)`, nunca una lista fija a mano —
+mismo criterio que el menú de capas) en paralelo (`Promise.all`); una capa sin
+histórico (ej. las manuales, ver deuda abajo) simplemente devuelve vacío sin
+afectar a las demás. Los puntos históricos se marcan `historico: true`, se
+pintan con el mismo `crearMarcadorEvento()`/`agruparPuntos()` que los eventos
+vivos (se agrupan igual si están cerca) pero más tenues (opacidad `0.55` vía
+`htmlElementVisibilityModifier`, no CSS — ese modificador ya pone `opacity`
+inline en cada marcador según hemisferio visible, así que una regla CSS de
+opacidad quedaría tapada por el inline; hay que tocar esa función si se
+cambia el estilo del histórico) y con "(histórico)" en el `title`. El botón
+alterna a "Ocultar histórico" mientras está activo (limpia `puntosHistoricos`
+y vuelve a pintar solo lo vivo).
+
+**Deuda conocida:** las capas manuales (`misLocalidades`/`misVecinos`, sección
+8.2) no tienen punto de poda automática — hoy solo se borran a mano desde
+`mantenimiento.html`, y ese borrado **no** archiva en `/historico` (el helper
+`entradasHistorico()` solo lo llaman los dos agentes en `functions/index.js`,
+nunca `js/db.js`). Si se quiere históricos de esas capas también, hace falta
+decidir si el borrado manual archiva (requeriría escritura de cliente a
+`/historico` con las mismas reglas de admin por correo que ya usan esas dos
+capas) — no implementado todavía, fuera del alcance de esta ronda.
 
 ## 9. Documentación viva
 
