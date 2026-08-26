@@ -21,6 +21,13 @@
       "misVecinos": {
         ".write": "auth != null && auth.token.email == 'dmgerardo@gmail.com'"
       }
+    },
+    "historico": {
+      ".read": true,
+      ".write": false,
+      "$capaId": {
+        ".indexOn": ["fechaUTC"]
+      }
     }
   }
 }
