@@ -253,6 +253,26 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   `#menu-historico`) — mismo botón/panel flotante, pero se documenta junto al modelo
   de datos porque el diseño de performance (nunca un listener en vivo, consulta
   indexada por rango) es la parte que importa preservar si se toca.
+- **Clic en el mapa cierra lo que esté abierto** (2026-08-26, `js/main.js`): un clic
+  en la zona central (el globo, fuera de cualquier marcador) cierra de un golpe
+  `panel-info`, `panel-reporte`, `lista-capas`, `lista-vistas` y `panel-historico`, y
+  colapsa cualquier marcador agrupado desplegado en abanico — para que la app se
+  sienta más ágil, sin tener que ir a buscar cada botón de "cerrar" por separado. El
+  listener se engancha en `#contenedor-globo`, no en `document`: los botones/paneles
+  son **hermanos** de ese contenedor en el HTML (no hijos), así que un clic ahí nunca
+  llega a este listener y no hace falta filtrarlos a mano. Los marcadores sí son
+  hijos (globe.gl los agrega dentro del contenedor), pero `crearMarcadorEvento()`/
+  `crearMarcadorGrupo()` ya hacían `stopPropagation()` en su propio clic desde antes
+  — por eso abrir un evento o desplegar un grupo no dispara este cierre general, sin
+  que hiciera falta tocar esos handlers. Colapsar los grupos desplegados reutiliza
+  `aplicarClusterAlGlobo()` (la misma función del re-clustering por zoom, sección
+  "Agrupar marcadores cercanos" arriba) en vez de llevar un registro aparte de qué
+  grupos estaban abiertos — como `agruparPuntos()` arma objetos nuevos en cada
+  llamada, volver a pintar los marcadores ya los deja todos colapsados de por sí.
+  **`#panel-giro` queda fuera a propósito**: no es un popup que se "cierra", es el
+  indicador en vivo de que el giro automático sigue activo — ocultarlo sin detener el
+  giro dejaría el ícono del botón y el panel en estados contradictorios (el giro
+  seguiría activo pero sin control visible de velocidad).
 
 ## 4. Seguridad — no negociable
 

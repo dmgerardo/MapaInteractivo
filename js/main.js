@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir, consultarHistorico } from './db.js?v=11';
-import { esc, urlSegura } from './utilidades.js?v=11';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=11';
-import { APP_VERSION } from './version.js?v=11';
+import { suscribir, consultarHistorico } from './db.js?v=12';
+import { esc, urlSegura } from './utilidades.js?v=12';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=12';
+import { APP_VERSION } from './version.js?v=12';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -772,4 +772,37 @@ botonAplicarHistorico.addEventListener('click', () => {
     return;
   }
   mostrarHistorico();
+});
+
+// --- Clic en el mapa cierra lo que esté abierto -----------------------------------
+// Un clic en la zona central (el globo, fuera de cualquier marcador) cierra todos los
+// paneles/menús flotantes de un golpe, para que la app se sienta más ágil — sin tener
+// que ir a buscar cada botón de "cerrar" por separado. Se engancha en #contenedor-globo
+// (no en document): los botones/paneles son hermanos de ese contenedor en el HTML, no
+// hijos, así que un clic ahí nunca llega a este listener y no hace falta filtrarlos a
+// mano. Los marcadores sí son hijos (globe.gl los agrega dentro del contenedor), pero
+// crearMarcadorEvento()/crearMarcadorGrupo() ya hacen stopPropagation() en su propio
+// clic — por eso abrir un evento o desplegar un grupo no dispara este cierre general.
+// El panel de giro (#panel-giro) queda fuera a propósito: no es un popup que se
+// "cierra", es el indicador en vivo de que el giro automático sigue activo — ocultarlo
+// sin detener el giro dejaría el ícono del botón y el panel en estados contradictorios.
+contenedor.addEventListener('click', () => {
+  panelInfo.classList.add('oculto');
+
+  panelReporte.classList.add('oculto');
+  botonReporte.setAttribute('aria-expanded', 'false');
+
+  listaCapas.classList.add('oculto');
+  botonMenuCapas.setAttribute('aria-expanded', 'false');
+
+  listaVistas.classList.add('oculto');
+  botonMenuVista.setAttribute('aria-expanded', 'false');
+
+  panelHistorico.classList.add('oculto');
+  botonHistorico.setAttribute('aria-expanded', 'false');
+
+  // Recalcula los marcadores agrupados desde cero — cualquier grupo desplegado en
+  // abanico (ver crearMarcadorGrupo()) vuelve a su círculo con el conteo, sin llevar
+  // registro aparte de cuáles estaban abiertos.
+  aplicarClusterAlGlobo();
 });
