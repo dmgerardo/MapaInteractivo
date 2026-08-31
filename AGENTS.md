@@ -201,7 +201,30 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   usuario. `nombreDeFeature()` reconoce `shapeName` (el campo de geoBoundaries)
   además de las variantes de Natural Earth. `obtenerEstadosNaturalEarth()` y
   `obtenerEstadosMexico()` degradan por separado (`try/catch` → `[]`) — si una
-  fuente falla, la otra igual aparece.
+  fuente falla, la otra igual aparece. **Performance en los modos con fronteras
+  (2026-08-31):** reportado como lentitud extrema al interactuar con el mapa en
+  "Fronteras"/"Satelital + fronteras". Causa raíz confirmada contra la
+  documentación real de three-globe (`README.md` del repo `vasturiano/three-globe`,
+  no supuesta): por default, `.polygonsData()`/`.labelsData()` **animan** la
+  aparición de cada polígono/etiqueta nuevo durante 1000ms
+  (`polygonsTransitionDuration`/`labelsTransitionDuration`) cada vez que se
+  llaman — con cientos de polígonos+etiquetas (país+estado+ciudad) recalculando
+  posiciones en cada frame durante un segundo entero justo cuando el usuario
+  arrastra/hace zoom, el frame rate se desploma. Se puso ambas en `0`. También se
+  bajó `polygonCapCurvatureResolution` de 5° (default) a 10° — menos triángulos
+  por polígono para aproximar la curvatura de la esfera, imperceptible a las
+  altitudes de cámara que usa esta app pero con cientos de polígonos activos sí
+  pesa en el conteo total de triángulos a redibujar por frame. Además,
+  `construirPoligonosFronteras(nivel)`/`construirEtiquetasFronteras(nivel)` ahora
+  memoizan su resultado en un `Map` por `nivel` (`cachePoligonosPorNivel`/
+  `cacheEtiquetasPorNivel`): antes, oscilar la cámara cerca de un umbral de zoom
+  (ej. entrando y saliendo del nivel "estado") recalculaba
+  `centroideDePoligono()` para cientos de features en cada cruce del umbral;
+  ahora solo la primera vez por nivel. Verificado con Playwright y datos
+  GeoJSON sintéticos (mock de three-globe/Firebase, red real bloqueada en este
+  sandbox): sin errores de consola al cambiar a "Fronteras" ni al oscilar zoom
+  repetidamente cerca del umbral de estado — pendiente de confirmación visual
+  del usuario en producción, ya que el render WebGL real no se puede probar acá.
 - **Giro automático** (`#menu-giro`, junto al menú de vista, `js/main.js`):
   usa directo `globo.controls().autoRotate`/`.autoRotateSpeed` — son propiedades
   de los controles de three.js/OrbitControls que expone globe.gl, no hace falta

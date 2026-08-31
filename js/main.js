@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir, consultarHistorico } from './db.js?v=12';
-import { esc, urlSegura } from './utilidades.js?v=12';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=12';
-import { APP_VERSION } from './version.js?v=12';
+import { suscribir, consultarHistorico } from './db.js?v=13';
+import { esc, urlSegura } from './utilidades.js?v=13';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=13';
+import { APP_VERSION } from './version.js?v=13';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -87,7 +87,23 @@ const globo = Globe()(contenedor)
   .labelColor((d) => colorEtiqueta(d.nivel))
   .labelDotRadius(0)
   .labelResolution(3)
-  .labelAltitude(ALTITUD_ETIQUETAS);
+  .labelAltitude(ALTITUD_ETIQUETAS)
+  // --- Performance en los modos con fronteras (reportado 2026-08-30) ---------------
+  // Por default, three-globe ANIMA la aparición de cada polígono/etiqueta nuevo
+  // durante 1000ms cada vez que se llama a .polygonsData()/.labelsData() — con
+  // cientos de polígonos y etiquetas (país+estado+ciudad), esa animación es la
+  // causa principal de la lentitud al cambiar de nivel de detalle por zoom: en 0
+  // el cambio es instantáneo, sin recalcular posiciones en cada frame durante un
+  // segundo entero justo cuando el usuario está interactuando.
+  .polygonsTransitionDuration(0)
+  .labelsTransitionDuration(0)
+  // Resolución de la curvatura del techo de cada polígono (grados, default 5 de
+  // three-globe): a más grados, menos caras por polígono para aproximar la
+  // esfera — con cientos de polígonos activos en los modos con fronteras, bajar
+  // el detalle acá reduce el conteo de triángulos que hay que rotar/redibujar en
+  // cada frame. Prácticamente imperceptible a las altitudes de cámara que usa
+  // esta app, ver AGENTS.md sección 3.
+  .polygonCapCurvatureResolution(10);
 
 // Centro de México (Zacatecas, aprox. geográfico del país) — el globo abre ahí en
 // vez del (0,0) por defecto de globe.gl.
@@ -493,14 +509,27 @@ function colorEtiqueta(nivel) {
   return fondoOscuro ? 'rgba(255,255,255,0.78)' : 'rgba(95,95,95,0.8)';
 }
 
+// Memoizados por nivel (además del caché de obtenerPaises()/obtenerEstados()/
+// obtenerLugares()): construir estos arreglos recalcula el centroide de cada
+// polígono (centroideDePoligono() recorre todos sus vértices), y sin este caché se
+// repite ese trabajo cada vez que la cámara oscila cerca de un umbral de altitud
+// (ej. UMBRAL_ALTITUD_ESTADOS) y entra/sale del mismo nivel varias veces seguidas
+// — reportado como lentitud al usar zoom con fronteras (2026-08-30).
+const cachePoligonosPorNivel = new Map();
+const cacheEtiquetasPorNivel = new Map();
+
 async function construirPoligonosFronteras(nivel) {
+  if (cachePoligonosPorNivel.has(nivel)) return cachePoligonosPorNivel.get(nivel);
   const paises = (await obtenerPaises()).map((f) => ({ ...f, nivel: 'pais' }));
-  if (nivel === 'pais') return paises;
-  const estados = (await obtenerEstados()).map((f) => ({ ...f, nivel: 'estado' }));
-  return paises.concat(estados);
+  const resultado = nivel === 'pais'
+    ? paises
+    : paises.concat((await obtenerEstados()).map((f) => ({ ...f, nivel: 'estado' })));
+  cachePoligonosPorNivel.set(nivel, resultado);
+  return resultado;
 }
 
 async function construirEtiquetasFronteras(nivel) {
+  if (cacheEtiquetasPorNivel.has(nivel)) return cacheEtiquetasPorNivel.get(nivel);
   const etiquetas = [];
   for (const feature of await obtenerPaises()) {
     const centro = centroideDePoligono(feature);
@@ -523,6 +552,7 @@ async function construirEtiquetasFronteras(nivel) {
       }
     }
   }
+  cacheEtiquetasPorNivel.set(nivel, etiquetas);
   return etiquetas;
 }
 

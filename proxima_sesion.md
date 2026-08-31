@@ -4,7 +4,7 @@
 > perder el hilo. La fuente de verdad de arquitectura/convenciones sigue siendo
 > **`AGENTS.md`** (léelo completo) — esto es solo "qué se hizo" y "qué falta".
 
-## Estado del proyecto (2026-08-26, actualizado tras histórico de eventos, agrupar marcadores y revisión de performance)
+## Estado del proyecto (2026-08-31, actualizado tras spiderfy de grupos, cierre de paneles al clic en el mapa y fix de performance en modos con fronteras)
 
 - **App en producción:** https://globo-01.web.app/ (Firebase Hosting, deploy
   automático en cada push a `main` vía GitHub Actions)
@@ -13,14 +13,22 @@
 - **Repo:** https://github.com/dmgerardo/MapaInteractivo
 - **Firebase project:** `globo-01` (plan Blaze — necesario para Cloud Functions)
 - **Versión actual de la app:** v10 (botón junto al título, clic recarga la página)
-- **8 PRs mergeados a `main`** (#1–#8) en dos sesiones: agente de riesgo operativo,
-  ampliación de cobertura de esa skill, detalle por zoom + giro automático +
-  centrado en México, favicon/marca, corrección de tamaño/altitud/contraste de
-  etiquetas de fronteras, fix de z-fighting en polígonos de estado (no era la
-  causa real), y el fix real de la división estatal de México (Natural Earth no
-  la tiene, se agregó `datos/mexico-estados.geojson`). Esta ronda (histórico +
-  clustering + performance) todavía no tiene PR — ver "Cómo retomar" abajo si la
-  sesión se cortó antes de mergear.
+- **11 PRs mergeados a `main`** (#1–#11) en varias sesiones: agente de riesgo
+  operativo, ampliación de cobertura de esa skill, detalle por zoom + giro
+  automático + centrado en México, favicon/marca, corrección de
+  tamaño/altitud/contraste de etiquetas de fronteras, fix de z-fighting en
+  polígonos de estado (no era la causa real), el fix real de la división
+  estatal de México (Natural Earth no la tiene, se agregó
+  `datos/mexico-estados.geojson`), histórico de eventos + clustering + primera
+  revisión de performance (#9), spiderfy de grupos de marcadores muy juntos
+  (#10), y cierre de paneles/menús al hacer clic en el mapa (#11). Reglas de
+  `database.rules.json` para `/historico` **confirmadas publicadas y
+  funcionando** por el usuario (verificado con `curl` directo a
+  `*.firebaseio.com`, reachable desde este sandbox). Ronda actual (fix de
+  performance en modos con fronteras: `polygonsTransitionDuration`,
+  `labelsTransitionDuration`, `polygonCapCurvatureResolution`, memoización de
+  polígonos/etiquetas por nivel de zoom) todavía no tiene PR al escribir esto
+  — ver "Cómo retomar" abajo si la sesión se cortó antes de mergear.
 
 ## Qué existe hoy
 
@@ -34,9 +42,18 @@
    detalle lateral derecho, panel de "reporte" lateral izquierdo, **panel de
    histórico** (nuevo hoy, ver punto 4). El globo **abre centrado en México**
    (`CENTRO_MEXICO`), no en `(0,0)`. **Los marcadores de eventos cercanos se
-   agrupan** (nuevo hoy, `agruparPuntos()`) en un badge con conteo cuando están
-   muy juntos, para que no se sobrepongan — se separan solos al acercar la
-   cámara. Ver `AGENTS.md` sección 3 para el detalle completo de cada pieza.
+   agrupan** (`agruparPuntos()`) en un badge con conteo cuando están muy juntos
+   — se separan solos al acercar la cámara, y si dos eventos siguen coincidiendo
+   incluso al acercar del todo, **clic en el badge los "despliega" en abanico**
+   alrededor del grupo (spiderfy) para poder darles clic individualmente.
+   **Clic en el área central del mapa cierra** cualquier panel/menú/popup
+   abierto (histórico, reporte, capas, vista, detalle) y colapsa cualquier
+   grupo desplegado, para una interacción más fluida. **Performance
+   (2026-08-31)**: los modos con fronteras traían lentitud severa por las
+   animaciones de aparición de tres-globe (1000ms por defecto en cada
+   `.polygonsData()`/`.labelsData()`) — desactivadas, más resolución de
+   curvatura reducida y memoización de polígonos/etiquetas por nivel de zoom.
+   Ver `AGENTS.md` sección 3 para el detalle completo de cada pieza.
 2. **Modelo de datos** en Realtime Database: `/capas/{capaId}` +
    `/eventos/{capaId}/{eventoId}` — ver `AGENTS.md` sección 8 para el esquema
    completo.
@@ -78,25 +95,22 @@
 
 ## Deuda / pendientes conocidos
 
-- **Sin confirmación visual en navegador real del histórico ni del clustering
-  de marcadores** (sesión 2026-08-26): el sandbox de esta sesión sigue
-  bloqueando `cdn.jsdelivr.net`/`unpkg.com`/`gstatic.com`/`*.firebaseio.com`
-  (política de red del proxy), así que el globo 3D real no carga acá. Sí se
-  verificó con un **mock propio de globe.gl + Firebase** vía Playwright
+- **Sin confirmación visual en navegador real (WebGL) de varias features
+  recientes**: el sandbox sigue bloqueando `cdn.jsdelivr.net`/`unpkg.com`
+  (aunque `*.firebaseio.com` **sí se volvió alcanzable** a media sesión — se
+  usó para confirmar que las reglas de `/historico` quedaron publicadas y
+  funcionando), así que el globo 3D real nunca carga en este entorno. Todo se
+  verifica con un **mock propio de globe.gl + Firebase** vía Playwright
   (`chromium.launch` necesita `--no-sandbox` en este entorno, y `pkill` está
   bloqueado por la política de comandos — usar `ps aux | grep` + `kill <pid>`
-  si hace falta matar un proceso colgado): el panel de histórico abre, la
-  consulta combina eventos vivos + históricos correctamente, el checkbox
-  "ocultar actuales" funciona, y el clustering agrupa/desagrupa según la
-  altitud simulada. También se probó `ingerirRiesgoOperativo` completo
-  (escritura, poda, archivado en `/historico`, lecturas en paralelo) con un
-  mock del Admin SDK. Falta que alguien confirme en producción real: (a) que
-  los marcadores agrupados se ven bien y el zoom-al-hacer-clic funciona, (b)
-  que el panel de histórico trae datos reales una vez que haya algo archivado
-  (hoy `/historico` está vacío hasta la próxima poda de un agente), (c) que
-  las reglas nuevas de `database.rules.json` (`historico` + su índice) se
-  publicaron de verdad en Firebase Console — **avisar al usuario explícitamente**,
-  ver Sección 4/Cómo retomar.
+  si hace falta matar un proceso colgado): histórico, clustering, spiderfy,
+  cierre de paneles al clic en el mapa, y el fix de performance de fronteras
+  (con GeoJSON sintético) pasan sin errores de consola. Falta que el usuario
+  confirme en producción real: (a) que el spiderfy realmente permite acceder a
+  eventos coincidentes, (b) que el mapa ya no se siente lento en modos con
+  fronteras, (c) que el panel de histórico trae datos reales una vez que haya
+  algo archivado (hoy `/historico` puede seguir vacío hasta la próxima poda de
+  un agente).
 - **Descubrimiento de red útil para la próxima sesión**: aunque
   `cdn.jsdelivr.net`/`unpkg.com` siguen bloqueados en este sandbox,
   `raw.githubusercontent.com`, `media.githubusercontent.com` (para archivos
@@ -167,11 +181,10 @@
    `gstatic.com/firebasejs`).
 4. Cualquier cambio a `database.rules.json` o `storage.rules` requiere que el
    usuario los vuelva a pegar manualmente en Firebase Console — avisarle
-   explícitamente cada vez. **Pendiente de publicar (2026-08-26)**: el nodo
-   `historico` nuevo (lectura pública, escritura bloqueada, `.indexOn` por
-   `fechaUTC`) — sin publicar esto, la consulta del panel de histórico falla
-   en silencio (`get()` sin índice explota con "Index not defined" en la
-   consola del navegador, no rompe el resto del mapa).
+   explícitamente cada vez. El nodo `historico` (lectura pública, escritura
+   bloqueada, `.indexOn` por `fechaUTC`) ya está publicado y confirmado
+   funcionando (verificado con `curl` directo a `*.firebaseio.com` el
+   2026-08-30).
 5. Si tocas algo de `riesgoOperativo`: la skill vive en
    `.claude/skills/riesgo-operativo-mapa/SKILL.md`, la Cloud Function en
    `functions/index.js` (`ingerirRiesgoOperativo`), y la Routine se administra
