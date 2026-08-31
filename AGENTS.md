@@ -225,6 +225,17 @@ Si es necesario agregar backend cambiaría la arquitectura a usar Windows + IIS 
   sandbox): sin errores de consola al cambiar a "Fronteras" ni al oscilar zoom
   repetidamente cerca del umbral de estado — pendiente de confirmación visual
   del usuario en producción, ya que el render WebGL real no se puede probar acá.
+  **Toggle "Mostrar nombres" (2026-08-31):** en vez de una cuarta vista
+  "fronteras sin nombres", se agregó un checkbox (`.fila-checkbox`, mismo patrón
+  que el de histórico) dentro del propio menú de vista (`renderizarMenuVista()`),
+  visible siempre pero solo con efecto en los dos modos con fronteras. Estado en
+  `mostrarEtiquetas` (preferencia de sesión, no se guarda en Firebase — mismo
+  criterio que `capasOcultasPorUsuario`/giro automático). Alternarlo no vuelve a
+  tocar red ni a recalcular centroides: `actualizarDetallePorZoom()` guarda el
+  último arreglo de etiquetas construido en `etiquetasBaseActuales` y
+  `aplicarMostrarEtiquetas()` solo llama `globo.labelsData(mostrar ?
+  etiquetasBaseActuales : [])` con ese mismo arreglo — los polígonos
+  (`polygonsData`) no se tocan, así que las fronteras se quedan dibujadas.
 - **Giro automático** (`#menu-giro`, junto al menú de vista, `js/main.js`):
   usa directo `globo.controls().autoRotate`/`.autoRotateSpeed` — son propiedades
   de los controles de three.js/OrbitControls que expone globe.gl, no hace falta

@@ -1,9 +1,9 @@
 // Monta el globo interactivo y lo alimenta de los nodos capas/eventos que van
 // poblando los agentes de IA. Ver AGENTS.md sección 8 (Modelo de datos).
-import { suscribir, consultarHistorico } from './db.js?v=13';
-import { esc, urlSegura } from './utilidades.js?v=13';
-import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=13';
-import { APP_VERSION } from './version.js?v=13';
+import { suscribir, consultarHistorico } from './db.js?v=14';
+import { esc, urlSegura } from './utilidades.js?v=14';
+import { ICONOS, ICONOS_EVENTO, ICONO_EVENTO_DEFAULT } from './iconos.js?v=14';
+import { APP_VERSION } from './version.js?v=14';
 
 const contenedor = document.getElementById('contenedor-globo');
 const panelInfo = document.getElementById('panel-info');
@@ -359,6 +359,13 @@ let vistaActual = 'satelite';
 let paisesGeoJSON = null;
 let estadosGeoJSON = null;
 let lugaresGeoJSON = null;
+// Preferencia de sesión (no se guarda en Firebase, mismo criterio que
+// capasOcultasPorUsuario/autoRotate): oculta los nombres de país/estado/ciudad en los
+// modos con fronteras sin dejar de dibujar los polígonos. Se guarda el último arreglo
+// de etiquetas calculado (`etiquetasBaseActuales`) para poder alternar sin volver a
+// pedirle nada a construirEtiquetasFronteras().
+let mostrarEtiquetas = true;
+let etiquetasBaseActuales = [];
 
 // Un color plano generado en canvas (en vez de un archivo de imagen) para el modo
 // "solo fronteras" — evita depender de un asset extra solo para un color sólido.
@@ -566,7 +573,16 @@ async function actualizarDetallePorZoom(altitude) {
     construirPoligonosFronteras(nivel),
     construirEtiquetasFronteras(nivel),
   ]);
-  globo.polygonsData(poligonos).labelsData(etiquetas);
+  etiquetasBaseActuales = etiquetas;
+  globo.polygonsData(poligonos).labelsData(mostrarEtiquetas ? etiquetas : []);
+}
+
+// Alterna el toggle "Mostrar nombres" del menú de vista — reutiliza el último
+// arreglo de etiquetas ya calculado, no vuelve a tocar red ni a recalcular
+// centroides.
+function aplicarMostrarEtiquetas(mostrar) {
+  mostrarEtiquetas = mostrar;
+  globo.labelsData(mostrar ? etiquetasBaseActuales : []);
 }
 
 async function aplicarVista(vista) {
@@ -616,6 +632,19 @@ function renderizarMenuVista() {
     });
     listaVistas.appendChild(chip);
   }
+
+  // Solo tiene efecto visible en los modos con fronteras (satelital no dibuja
+  // etiquetas), pero se deja siempre visible para no obligar a cambiar de vista
+  // primero — el estado del checkbox persiste al cambiar entre vistas.
+  const filaToggle = document.createElement('label');
+  filaToggle.className = 'fila-checkbox';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = mostrarEtiquetas;
+  checkbox.addEventListener('change', () => aplicarMostrarEtiquetas(checkbox.checked));
+  filaToggle.appendChild(checkbox);
+  filaToggle.appendChild(document.createTextNode('Mostrar nombres'));
+  listaVistas.appendChild(filaToggle);
 }
 renderizarMenuVista();
 
